@@ -3447,6 +3447,8 @@
       kyc: 'all',
       bank: 'all'
     };
+    const JSPDF_PRIMARY_SRC = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+    const JSPDF_FALLBACK_SRC = 'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js';
     let allProfiles = [];
     let allKycMap = {};
     const onboardingMap = {};
@@ -3459,6 +3461,46 @@
     let completedTableEntries = [];
     let notCompletedEmailOpen = false;
     let notCompletedEmailEntries = [];
+
+    const getJsPdfConstructor = () => window.jspdf?.jsPDF || window.jsPDF || null;
+
+    const loadScriptOnce = (src, id) => new Promise((resolve, reject) => {
+      const existing = document.getElementById(id);
+      if (existing) {
+        if (existing.dataset.loaded === 'true') {
+          resolve();
+          return;
+        }
+        existing.addEventListener('load', () => resolve(), { once: true });
+        existing.addEventListener('error', () => reject(new Error(`Script failed to load: ${src}`)), { once: true });
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.id = id;
+      script.src = src;
+      script.async = true;
+      script.addEventListener('load', () => {
+        script.dataset.loaded = 'true';
+        resolve();
+      }, { once: true });
+      script.addEventListener('error', () => reject(new Error(`Script failed to load: ${src}`)), { once: true });
+      document.head.appendChild(script);
+    });
+
+    const ensureJsPdfLoaded = async () => {
+      const existing = getJsPdfConstructor();
+      if (existing) return existing;
+
+      try {
+        await loadScriptOnce(JSPDF_PRIMARY_SRC, 'jspdf-primary');
+      } catch (primaryError) {
+        console.warn('Primary jsPDF source failed, trying fallback.', primaryError);
+        await loadScriptOnce(JSPDF_FALLBACK_SRC, 'jspdf-fallback');
+      }
+
+      return getJsPdfConstructor();
+    };
     let isAutoSyncingVerifiedPacks = false;
 
     const getInitials = (name = '') => {
@@ -4704,9 +4746,10 @@
       nextBtn.disabled = safePage >= totalPages - 1;
     };
 
-    const buildPackPdfReport = (pack, sections = []) => {
-      const JsPdf = window.jspdf?.jsPDF;
-      if (!JsPdf || !pack) return null;
+    const buildPackPdfReport = (pack, sections = [], JsPdfCtor = getJsPdfConstructor()) => {
+      if (!JsPdfCtor || !pack) return null;
+
+      const JsPdf = JsPdfCtor;
 
       const doc = new JsPdf({ unit: 'pt', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -4847,9 +4890,11 @@
       };
     };
 
-    const downloadPackPdf = (pack, sections = []) => {
-      const report = buildPackPdfReport(pack, sections);
-      if (!report) return;
+    const downloadPackPdf = async (pack, sections = []) => {
+      const JsPdfCtor = await ensureJsPdfLoaded();
+      if (!JsPdfCtor) throw new Error('PDF library unavailable. Please refresh and try again.');
+      const report = buildPackPdfReport(pack, sections, JsPdfCtor);
+      if (!report) throw new Error('Could not build account details PDF for this user.');
       report.doc.save(report.filename);
     };
 
@@ -6388,7 +6433,7 @@
       const zip = new JsZip();
       zip.file(`sumsub-${safeBase}.json`, JSON.stringify(applicant, null, 2));
       const pdfSections = buildCompletePackSections(applicant);
-      const pdfReport = buildPackPdfReport(applicant, pdfSections);
+      const pdfReport = buildPackPdfReport(applicant, pdfSections, getJsPdfConstructor());
       if (pdfReport) {
         zip.file(pdfReport.filename, pdfReport.doc.output('blob'));
       }
@@ -6563,7 +6608,19 @@
         const pack = container?.__activePackDetails;
         const sections = container?.__packSections || [];
         if (!pack) return;
-        downloadPackPdf(pack, sections);
+
+        const originalLabel = packDownloadBtn.textContent;
+        packDownloadBtn.disabled = true;
+        packDownloadBtn.textContent = 'Preparing PDF...';
+        downloadPackPdf(pack, sections)
+          .catch((error) => {
+            console.error('Pack PDF generation failed:', error);
+            alert(error?.message || 'Unable to generate account details PDF right now. Please try again.');
+          })
+          .finally(() => {
+            packDownloadBtn.disabled = false;
+            packDownloadBtn.textContent = originalLabel;
+          });
         return;
       }
 
