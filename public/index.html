@@ -3469,6 +3469,7 @@
     };
     const JSPDF_PRIMARY_SRC = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
     const JSPDF_FALLBACK_SRC = 'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js';
+    const COMPUTERSHARE_LOGO_URL = 'https://mfxnghmuccevsxwcetej.supabase.co/storage/v1/object/public/Mint%20Assets/tMOmeIOo4KE20Yh1bIuk8PFMlFHZ421rVESa2dcn.jpg';
     let allProfiles = [];
     let allKycMap = {};
     const onboardingMap = {};
@@ -6539,7 +6540,24 @@
       };
     };
 
-    const buildComputerSharePdfReport = (profile = {}, onboardingRow = {}, packDetails = {}, JsPdfCtor = getJsPdfConstructor()) => {
+    const loadImageAsDataUrl = async (url) => {
+      const imageUrl = String(url || '').trim();
+      if (!imageUrl) return '';
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error(`Logo request failed: ${response.status}`);
+      }
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('Could not read logo data.'));
+        reader.readAsDataURL(blob);
+      });
+    };
+
+    const buildComputerSharePdfReport = (profile = {}, onboardingRow = {}, packDetails = {}, options = {}) => {
+      const JsPdfCtor = options?.JsPdfCtor || getJsPdfConstructor();
       if (!JsPdfCtor) return null;
       const doc = new JsPdfCtor({ unit: 'pt', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -6549,6 +6567,7 @@
       const leftColWidth = Math.round(contentWidth * 0.34);
       const rightColWidth = contentWidth - leftColWidth;
       let y = margin + 12;
+      const logoDataUrl = String(options?.logoDataUrl || '').trim();
 
       const d = getComputerSharePrefillData(profile, onboardingRow, packDetails);
       const rows = [
@@ -6570,10 +6589,21 @@
         ['ACCOUNT TYPE', d.accountType]
       ];
 
+      if (logoDataUrl) {
+        try {
+          const logoWidth = 170;
+          const logoHeight = 44;
+          doc.addImage(logoDataUrl, 'JPEG', pageWidth - margin - logoWidth, y, logoWidth, logoHeight);
+        } catch (logoError) {
+          console.warn('Could not add ComputerShare logo to PDF:', logoError);
+        }
+      }
+
+      y += 58;
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(18);
-      doc.text('ACCOUNT DETAILS', pageWidth / 2, y + 20, { align: 'center' });
-      y += 42;
+      doc.text('ACCOUNT DETAILS', pageWidth / 2, y + 10, { align: 'center' });
+      y += 32;
 
       const drawRow = (label, value) => {
         const valueText = String(value || 'N/A');
@@ -7196,7 +7226,13 @@
         try {
           const JsPdfCtor = await ensureJsPdfLoaded();
           if (!JsPdfCtor) throw new Error('PDF library unavailable. Please refresh and try again.');
-          const report = buildComputerSharePdfReport(profile, onboardingRow, packDetails, JsPdfCtor);
+          let logoDataUrl = '';
+          try {
+            logoDataUrl = await loadImageAsDataUrl(COMPUTERSHARE_LOGO_URL);
+          } catch (logoError) {
+            console.warn('ComputerShare logo load failed, continuing without logo:', logoError);
+          }
+          const report = buildComputerSharePdfReport(profile, onboardingRow, packDetails, { JsPdfCtor, logoDataUrl });
           if (!report) throw new Error('Could not build ComputerShare account creation PDF.');
 
           if (computerShareViewBtn) {
