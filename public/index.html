@@ -6372,6 +6372,20 @@
         return found === undefined ? fallback : String(found).trim();
       };
 
+      const composeAddress = (parts = []) => {
+        const unique = [];
+        const seen = new Set();
+        parts.forEach((part) => {
+          const value = String(part || '').trim();
+          if (!value || value.toLowerCase() === 'n/a') return;
+          const key = value.toLowerCase();
+          if (seen.has(key)) return;
+          seen.add(key);
+          unique.push(value);
+        });
+        return unique.join('\n');
+      };
+
       const identityNumber = valueFrom([
         profile?.identity_number,
         profile?.id_number,
@@ -6381,16 +6395,118 @@
         parsedSumsubRaw?.mandate_data?.id_number
       ]);
 
-      const physicalAddress = valueFrom([
-        profile?.address,
-        onboardingRow?.address,
-        pickPackValue(parsedPack, ['info.address', 'fixedInfo.address', 'address.formattedAddress', 'addresses.residential.formattedAddress'])
+      const packPhysicalAddress = pickPackValue(parsedPack, [
+        'info.addresses.0.streetEn',
+        'info.addresses.0.street',
+        'info.idDocs.1.address.streetEn',
+        'info.idDocs.1.address.street',
+        'fixedInfo.address',
+        'fixedInfo.residentialAddress',
+        'info.address',
+        'info.residentialAddress',
+        'address.formattedAddress',
+        'address.fullAddress',
+        'address.street',
+        'address.line1',
+        'addresses.residential.formatted',
+        'addresses.residential.fullAddress',
+        'addresses.residential.addressLine',
+        'addresses.residential.street',
+        'addresses.0.streetEn',
+        'addresses.0.street',
+        'addresses.0.fullAddress',
+        'addresses.0.formattedAddress',
+        'addresses.0.addressLine'
       ]);
 
-      const postalAddress = valueFrom([
+      const onboardingPhysicalAddress = valueFrom([
+        onboardingRow?.physical_address,
+        onboardingRow?.residential_address,
+        onboardingRow?.address,
+        onboardingRow?.street_address,
+        onboardingRow?.address_line_1,
+        onboardingRow?.address_line1,
+        onboardingRow?.line1
+      ], '');
+
+      const profilePhysicalAddress = valueFrom([
+        profile?.address,
+        profile?.street_address,
+        profile?.address_line_1,
+        profile?.address_line1,
+        profile?.line1
+      ], '');
+
+      const physicalAddress = valueFrom([
+        packPhysicalAddress,
+        onboardingPhysicalAddress,
+        profilePhysicalAddress,
+        composeAddress([
+          onboardingRow?.address_line_2,
+          onboardingRow?.suburb,
+          onboardingRow?.city,
+          onboardingRow?.province,
+          onboardingRow?.postal_code,
+          onboardingRow?.country,
+          profile?.suburb,
+          profile?.city,
+          profile?.province,
+          profile?.postal_code,
+          profile?.country
+        ])
+      ]);
+
+      const packPostalAddress = pickPackValue(parsedPack, [
+        'info.addresses.0.formattedAddress',
+        'info.idDocs.1.address.formattedAddress',
+        'info.addresses.0.fullAddress',
+        'fixedInfo.postalAddress',
+        'fixedInfo.address',
+        'info.postalAddress',
+        'info.address',
+        'addresses.postal.formatted',
+        'addresses.postal.formattedAddress',
+        'addresses.postal.fullAddress',
+        'addresses.postal.addressLine',
+        'addresses.postal.street',
+        'addresses.0.formattedAddress',
+        'addresses.0.fullAddress',
+        'addresses.0.addressLine',
+        'address.postalAddress',
+        'address.formattedAddress'
+      ]);
+
+      const onboardingPostalAddress = valueFrom([
         onboardingRow?.postal_address,
+        onboardingRow?.postalAddress,
+        onboardingRow?.postal_line_1,
+        onboardingRow?.postal_line1
+      ], '');
+
+      const profilePostalAddress = valueFrom([
         profile?.postal_address,
-        pickPackValue(parsedPack, ['addresses.postal.formattedAddress', 'address.postalAddress'])
+        profile?.postalAddress,
+        profile?.postal_line_1,
+        profile?.postal_line1
+      ], '');
+
+      const postalAddress = valueFrom([
+        packPostalAddress,
+        onboardingPostalAddress,
+        profilePostalAddress,
+        composeAddress([
+          onboardingRow?.postal_line_2,
+          onboardingRow?.postal_suburb,
+          onboardingRow?.postal_city,
+          onboardingRow?.postal_province,
+          onboardingRow?.postal_code,
+          onboardingRow?.postal_country,
+          profile?.postal_suburb,
+          profile?.postal_city,
+          profile?.postal_province,
+          profile?.postal_code,
+          profile?.postal_country
+        ])
       ], physicalAddress);
 
       return {
