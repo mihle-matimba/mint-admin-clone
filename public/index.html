@@ -3095,6 +3095,25 @@
                   </div>
                 </div>
               </div>
+
+              <div class="detail-card" data-account-pdf-card style="display: none;">
+                <div class="card-header">
+                  <div class="card-title">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm1 7V3.5L18.5 9H15z"/>
+                    </svg>
+                    Account details PDF
+                  </div>
+                </div>
+                <div class="detail-row">
+                  <div class="detail-label">Actions</div>
+                  <div class="detail-value">
+                    <div class="mandate-actions">
+                      <button class="mandate-action-btn" type="button" data-account-pdf-generate>Generate PDF</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="right-column">
@@ -5023,6 +5042,11 @@
           mandateActionsRow.style.display = hasOnboardingRow ? '' : 'none';
         }
 
+        const accountPdfCard = clone.querySelector('[data-account-pdf-card]');
+        if (accountPdfCard) {
+          accountPdfCard.style.display = effectiveKycState.completed ? '' : 'none';
+        }
+
         if (packJsonMap[profile.id]) {
           const packBtn = clone.querySelector('[data-pack-details]');
           if (packBtn) packBtn.disabled = false;
@@ -5645,6 +5669,190 @@
         phoneBody,
         jsonCorpus
       };
+    };
+
+    const getAccountDetailsForPdf = (profile = {}, onboardingRow = {}) => {
+      const source = getMandateDataSource(profile?.id, onboardingRow);
+      const prefill = getMandatePrefillData(profile, onboardingRow);
+      const fullName = [prefill.firstName, prefill.lastName].filter(Boolean).join(' ').trim() || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim() || 'Unknown User';
+
+      const incomeTaxNumber = String(pickPackValue(source, [
+        'incomeTaxNumber',
+        'income_tax_number',
+        'taxNumber',
+        'tax_number',
+        'fixedInfo.taxNumber',
+        'fixedInfo.incomeTaxNumber',
+        'info.taxNumber',
+        'info.incomeTaxNumber',
+        'tax.number'
+      ]) || onboardingRow?.tax_number || onboardingRow?.income_tax_number || profile?.tax_number || '').trim();
+
+      const telNo = String(pickPackValue(source, [
+        'telephone',
+        'telephoneNumber',
+        'landline',
+        'fixedInfo.telephone',
+        'fixedInfo.landline',
+        'info.telephone',
+        'contacts.telephone',
+        'contacts.landline'
+      ]) || onboardingRow?.telephone || profile?.telephone || '').trim();
+
+      const faxNo = String(pickPackValue(source, [
+        'fax',
+        'faxNumber',
+        'fixedInfo.fax',
+        'info.fax',
+        'contacts.fax'
+      ]) || onboardingRow?.fax || profile?.fax || '').trim();
+
+      const bankAccountNumber = String(pickPackValue(source, [
+        'bankAccount.number',
+        'bank.accountNumber',
+        'bankAccountNumber',
+        'bank_account_number',
+        'fixedInfo.bankAccountNumber',
+        'info.bankAccountNumber'
+      ]) || onboardingRow?.bank_account_number || profile?.bank_account_number || profile?.bank_account || '').trim();
+
+      const branchNumber = String(pickPackValue(source, [
+        'bankAccount.branchCode',
+        'bank.branchCode',
+        'branchNumber',
+        'bank_branch_code',
+        'fixedInfo.branchCode',
+        'info.branchCode'
+      ]) || onboardingRow?.bank_branch_code || profile?.bank_branch_code || '').trim();
+
+      const bankName = String(pickPackValue(source, [
+        'bankAccount.bankName',
+        'bank.name',
+        'bankName',
+        'bank_name',
+        'fixedInfo.bankName',
+        'info.bankName'
+      ]) || onboardingRow?.bank_name || profile?.bank_name || '').trim();
+
+      const accountType = String(pickPackValue(source, [
+        'bankAccount.accountType',
+        'bank.accountType',
+        'accountType',
+        'bank_account_type',
+        'fixedInfo.accountType',
+        'info.accountType'
+      ]) || onboardingRow?.bank_account_type || profile?.bank_account_type || '').trim();
+
+      const accountName = String(pickPackValue(source, [
+        'bankAccount.accountName',
+        'bank.accountName',
+        'accountName',
+        'bank_account_name'
+      ]) || onboardingRow?.bank_account_name || fullName).trim();
+
+      return {
+        logoUrl: 'https://mfxnghmuccevsxwcetej.supabase.co/storage/v1/object/public/Mint%20Assets/tMOmeIOo4KE20Yh1bIuk8PFMlFHZ421rVESa2dcn.jpg',
+        assetFundManager: 'MINT PLATFORMS (pty) Ltd',
+        accountName: fullName,
+        contactName: fullName,
+        identityNumber: prefill.identityNumber,
+        incomeTaxNumber,
+        physicalAddress: prefill.residentialAddress || prefill.postalAddress,
+        postalAddress: prefill.postalAddress || prefill.residentialAddress,
+        telNo: telNo || 'N/A',
+        faxNo: faxNo || 'N/A',
+        cellNo: prefill.phone || 'N/A',
+        email: prefill.email,
+        bankAccountNumber,
+        branchNumber,
+        bankName,
+        bankAccountName: accountName,
+        accountType
+      };
+    };
+
+    const generateAccountDetailsPdf = async (profile = {}, onboardingRow = {}) => {
+      const details = getAccountDetailsForPdf(profile, onboardingRow);
+      const fields = [
+        'assetFundManager',
+        'accountName',
+        'contactName',
+        'identityNumber',
+        'incomeTaxNumber',
+        'physicalAddress',
+        'postalAddress',
+        'telNo',
+        'faxNo',
+        'cellNo',
+        'email',
+        'bankAccountNumber',
+        'branchNumber',
+        'bankName',
+        'bankAccountName',
+        'accountType'
+      ];
+
+      const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1100,height=900');
+      if (!printWindow) {
+        throw new Error('Unable to open print window');
+      }
+
+      const serializedDetails = JSON.stringify(details).replace(/<\/script/gi, '<\\/script');
+
+      const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Account Details PDF Generator</title>
+  <style>
+    :root{--page-width:794px;--page-height:1123px;--border:#111;}*{box-sizing:border-box;}body{margin:0;padding:24px;font-family:Arial,Helvetica,sans-serif;background:#e8e8e8;color:#111;}.app{max-width:1380px;margin:0 auto;display:grid;grid-template-columns:1fr;gap:24px;align-items:start;}.preview-wrap{overflow:auto;}.page{width:var(--page-width);min-height:var(--page-height);margin:0 auto;background:#fff;position:relative;padding:40px 58px 52px;box-shadow:0 8px 30px rgba(0,0,0,.08);}.logo-row{display:flex;justify-content:flex-end;margin-bottom:66px;min-height:70px;}.logo-row img{max-width:260px;max-height:62px;object-fit:contain;object-position:right center;display:block;}.title{text-align:center;font-weight:800;font-style:italic;text-decoration:underline;font-size:23px;margin:0 0 48px;letter-spacing:.01em;}table.account{width:100%;border-collapse:collapse;table-layout:fixed;font-size:15px;}table.account td{border:2px solid var(--border);vertical-align:middle;padding:10px 10px;}td.label{width:33%;font-weight:400;text-transform:uppercase;font-size:16px;line-height:1.15;}td.value{width:67%;font-size:17px;line-height:1.18;}.tall td{padding-top:16px;padding-bottom:16px;}.address-label{height:178px;}.address-value{height:178px;white-space:pre-line;vertical-align:top;padding-top:18px !important;}.email-cell{height:66px;}@media print{@page{size:A4;margin:0;}body{background:#fff;padding:0;}.app{display:block;}.preview-wrap{overflow:visible;}.page{width:210mm;min-height:297mm;box-shadow:none;margin:0;padding:10.5mm 15mm 12mm;}.logo-row{margin-bottom:17mm;min-height:16mm;}.logo-row img{max-width:68mm;max-height:15mm;}.title{margin-bottom:13mm;}table.account{font-size:11.5pt;}td.label{font-size:11pt;}td.value{font-size:11.8pt;}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="preview-wrap">
+      <div class="page" id="printArea">
+        <div class="logo-row"><img id="previewLogo" alt="Logo" crossorigin="anonymous" /></div>
+        <div class="title">ACCOUNT DETAILS</div>
+        <table class="account">
+          <tr class="tall"><td class="label">ASSET / FUND MANAGER</td><td class="value" id="v_assetFundManager"></td></tr>
+          <tr class="tall"><td class="label">ACCOUNT NAME</td><td class="value" id="v_accountName"></td></tr>
+          <tr class="tall"><td class="label">CONTACT NAME</td><td class="value" id="v_contactName"></td></tr>
+          <tr class="tall"><td class="label">IDENTITY / REGISTRATION NUMBER</td><td class="value" id="v_identityNumber"></td></tr>
+          <tr><td class="label">INCOME TAX NUMBER</td><td class="value" id="v_incomeTaxNumber"></td></tr>
+          <tr><td class="label address-label">PHYSICAL ADDRESS</td><td class="value address-value" id="v_physicalAddress"></td></tr>
+          <tr><td class="label address-label">POSTAL ADDRESS</td><td class="value address-value" id="v_postalAddress"></td></tr>
+          <tr><td class="label">TEL NO (O/H)</td><td class="value" id="v_telNo"></td></tr>
+          <tr><td class="label">FAX NO</td><td class="value" id="v_faxNo"></td></tr>
+          <tr><td class="label">CELL NO</td><td class="value" id="v_cellNo"></td></tr>
+          <tr><td class="label">E-MAIL</td><td class="value email-cell" id="v_email"></td></tr>
+          <tr><td class="label">BANK ACCOUNT NUMBER</td><td class="value" id="v_bankAccountNumber"></td></tr>
+          <tr><td class="label">BRANCH NUMBER</td><td class="value" id="v_branchNumber"></td></tr>
+          <tr><td class="label">BANK NAME</td><td class="value" id="v_bankName"></td></tr>
+          <tr><td class="label">ACCOUNT NAME</td><td class="value" id="v_bankAccountName"></td></tr>
+          <tr><td class="label">ACCOUNT TYPE</td><td class="value" id="v_accountType"></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  <script>
+    const details = ${serializedDetails};
+    const fields = ${JSON.stringify(fields)};
+    function setText(id, value){const el = document.getElementById('v_' + id);if (!el) return;el.textContent = value || '';}
+    function render(){fields.forEach((id) => setText(id, details[id] || ''));document.getElementById('previewLogo').src = details.logoUrl || '';}
+    window.addEventListener('load', () => {
+      render();
+      setTimeout(() => window.print(), 150);
+    });
+    window.addEventListener('afterprint', () => window.close());
+  </script>
+</body>
+</html>`;
+
+      printWindow.document.open();
+      printWindow.document.write(html);
+      printWindow.document.close();
     };
 
     /* ================================================================
@@ -6843,6 +7051,30 @@
         } finally {
           mandateActionBtn.disabled = false;
           mandateActionBtn.textContent = originalLabel;
+        }
+      }
+
+      const accountPdfBtn = event.target.closest('[data-account-pdf-generate]');
+      if (accountPdfBtn) {
+        const item = accountPdfBtn.closest('.simple-item');
+        const profileId = item?.dataset?.profileId;
+        if (!profileId) return;
+
+        const profile = allProfiles.find((row) => String(row.id) === String(profileId));
+        if (!profile) return;
+
+        const onboardingRow = onboardingMap[profileId] || {};
+        const originalLabel = accountPdfBtn.textContent;
+        accountPdfBtn.disabled = true;
+        accountPdfBtn.textContent = 'Generating...';
+
+        try {
+          await generateAccountDetailsPdf(profile, onboardingRow);
+        } catch (error) {
+          console.error('Account details PDF generation failed:', error);
+        } finally {
+          accountPdfBtn.disabled = false;
+          accountPdfBtn.textContent = originalLabel;
         }
       }
 
