@@ -6520,6 +6520,8 @@
         contactName: fullName,
         identityNumber,
         incomeTaxNumber: valueFrom([
+          parsedSumsubRaw?.tax_details?.tax_number,
+          parsedSumsubRaw?.tax_number,
           onboardingRow?.tax_number,
           onboardingRow?.income_tax_number,
           profile?.tax_number,
