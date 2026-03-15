@@ -3095,6 +3095,26 @@
                   </div>
                 </div>
               </div>
+
+              <div class="detail-card" data-computershare-actions>
+                <div class="card-header">
+                  <div class="card-title">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm1 7V3.5L18.5 9H15z"/>
+                    </svg>
+                    ComputerShare account creation doc
+                  </div>
+                </div>
+                <div class="detail-row">
+                  <div class="detail-label">Actions</div>
+                  <div class="detail-value">
+                    <div class="mandate-actions">
+                      <button class="mandate-action-btn" type="button" data-computershare-view>View</button>
+                      <button class="mandate-action-btn" type="button" data-computershare-download>Download</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="right-column">
@@ -6339,6 +6359,143 @@
       return { doc, filename: `mandate-${safeBase}.pdf` };
     };
 
+    const getComputerSharePrefillData = (profile = {}, onboardingRow = {}, packDetails = {}) => {
+      const parsedPack = parseJsonSafe(packDetails) || (typeof packDetails === 'object' ? packDetails : {});
+      const parsedSumsubRaw = parseJsonSafe(onboardingRow?.sumsub_raw) || {};
+
+      const firstName = String(profile?.first_name || pickPackValue(parsedPack, ['info.firstName', 'fixedInfo.firstName', 'firstName']) || '').trim();
+      const lastName = String(profile?.last_name || pickPackValue(parsedPack, ['info.lastName', 'fixedInfo.lastName', 'lastName']) || '').trim();
+      const fullName = [firstName, lastName].filter(Boolean).join(' ') || String(pickPackValue(parsedPack, ['fullName', 'info.fullName', 'fixedInfo.fullName']) || '').trim() || 'N/A';
+
+      const valueFrom = (candidates = [], fallback = 'N/A') => {
+        const found = candidates.find((value) => value !== null && value !== undefined && String(value).trim() !== '');
+        return found === undefined ? fallback : String(found).trim();
+      };
+
+      const identityNumber = valueFrom([
+        profile?.identity_number,
+        profile?.id_number,
+        onboardingRow?.id_number,
+        onboardingRow?.identity_number,
+        pickPackValue(parsedPack, ['info.idNumber', 'info.identityNumber', 'fixedInfo.idNumber', 'fixedInfo.identityNumber', 'idNumber']),
+        parsedSumsubRaw?.mandate_data?.id_number
+      ]);
+
+      const physicalAddress = valueFrom([
+        profile?.address,
+        onboardingRow?.address,
+        pickPackValue(parsedPack, ['info.address', 'fixedInfo.address', 'address.formattedAddress', 'addresses.residential.formattedAddress'])
+      ]);
+
+      const postalAddress = valueFrom([
+        onboardingRow?.postal_address,
+        profile?.postal_address,
+        pickPackValue(parsedPack, ['addresses.postal.formattedAddress', 'address.postalAddress'])
+      ], physicalAddress);
+
+      return {
+        assetFundManager: valueFrom([
+          onboardingRow?.asset_fund_manager,
+          onboardingRow?.company_name,
+          'MINT PLATFORMS (pty) Ltd'
+        ]),
+        accountName: fullName,
+        contactName: fullName,
+        identityNumber,
+        incomeTaxNumber: valueFrom([
+          onboardingRow?.tax_number,
+          onboardingRow?.income_tax_number,
+          profile?.tax_number,
+          pickPackValue(parsedPack, ['info.taxId', 'fixedInfo.taxId'])
+        ]),
+        physicalAddress,
+        postalAddress,
+        telNo: valueFrom([onboardingRow?.tel_no, profile?.tel_no, 'N/A']),
+        faxNo: valueFrom([onboardingRow?.fax_no, profile?.fax_no, 'N/A']),
+        cellNo: valueFrom([profile?.phone_number, onboardingRow?.phone_number, pickPackValue(parsedPack, ['phone', 'phoneNumber', 'info.phone'])]),
+        email: valueFrom([profile?.email, onboardingRow?.email, pickPackValue(parsedPack, ['email', 'info.email'])]),
+        bankAccountNumber: valueFrom([onboardingRow?.bank_account_number, profile?.bank_account_number, profile?.bank_account]),
+        branchNumber: valueFrom([onboardingRow?.bank_branch_code, onboardingRow?.branch_code, profile?.branch_number]),
+        bankName: valueFrom([onboardingRow?.bank_name, profile?.bank_name]),
+        bankAccountName: valueFrom([onboardingRow?.bank_account_name, profile?.bank_account_name, onboardingRow?.bank_account_type, profile?.bank_account_type]),
+        accountType: valueFrom([onboardingRow?.bank_account_type, profile?.bank_account_type]),
+        safeBase: sanitizeFilename([firstName, lastName].filter(Boolean).join('_') || profile?.id || 'client') || 'client'
+      };
+    };
+
+    const buildComputerSharePdfReport = (profile = {}, onboardingRow = {}, packDetails = {}, JsPdfCtor = getJsPdfConstructor()) => {
+      if (!JsPdfCtor) return null;
+      const doc = new JsPdfCtor({ unit: 'pt', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 38;
+      const contentWidth = pageWidth - (margin * 2);
+      const leftColWidth = Math.round(contentWidth * 0.34);
+      const rightColWidth = contentWidth - leftColWidth;
+      let y = margin + 12;
+
+      const d = getComputerSharePrefillData(profile, onboardingRow, packDetails);
+      const rows = [
+        ['ASSET / FUND MANAGER', d.assetFundManager],
+        ['ACCOUNT NAME', d.accountName],
+        ['CONTACT NAME', d.contactName],
+        ['IDENTITY / REGISTRATION NUMBER', d.identityNumber],
+        ['INCOME TAX NUMBER', d.incomeTaxNumber],
+        ['PHYSICAL ADDRESS', d.physicalAddress],
+        ['POSTAL ADDRESS', d.postalAddress],
+        ['TEL NO (O/H)', d.telNo],
+        ['FAX NO', d.faxNo],
+        ['CELL NO', d.cellNo],
+        ['E-MAIL', d.email],
+        ['BANK ACCOUNT NUMBER', d.bankAccountNumber],
+        ['BRANCH NUMBER', d.branchNumber],
+        ['BANK NAME', d.bankName],
+        ['ACCOUNT NAME', d.bankAccountName],
+        ['ACCOUNT TYPE', d.accountType]
+      ];
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.text('ACCOUNT DETAILS', pageWidth / 2, y + 20, { align: 'center' });
+      y += 42;
+
+      const drawRow = (label, value) => {
+        const valueText = String(value || 'N/A');
+        const valueLines = doc.splitTextToSize(valueText, rightColWidth - 16);
+        const labelLines = doc.splitTextToSize(label, leftColWidth - 16);
+        const isAddress = label.includes('ADDRESS');
+        const minHeight = isAddress ? 88 : 30;
+        const rowHeight = Math.max(minHeight, (Math.max(labelLines.length, valueLines.length) * 13) + 12);
+
+        if (y + rowHeight > pageHeight - margin) {
+          doc.addPage();
+          y = margin;
+        }
+
+        doc.setDrawColor(17, 17, 17);
+        doc.setLineWidth(1);
+        doc.rect(margin, y, leftColWidth, rowHeight);
+        doc.rect(margin + leftColWidth, y, rightColWidth, rowHeight);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text(labelLines, margin + 8, y + 16);
+
+        doc.setFontSize(11);
+        doc.text(valueLines, margin + leftColWidth + 8, y + 16);
+
+        y += rowHeight;
+      };
+
+      rows.forEach(([label, value]) => drawRow(label, value));
+
+      return {
+        doc,
+        filename: `computershare-account-creation-${d.safeBase}.pdf`
+      };
+    };
+
+
     const openPdfBlobInNewTab = (blob) => {
       if (!blob) return false;
       const url = URL.createObjectURL(blob);
@@ -6900,6 +7057,45 @@
         } finally {
           mandateActionBtn.disabled = false;
           mandateActionBtn.textContent = originalLabel;
+        }
+      }
+
+      const computerShareViewBtn = event.target.closest('[data-computershare-view]');
+      const computerShareDownloadBtn = event.target.closest('[data-computershare-download]');
+      const computerShareActionBtn = computerShareViewBtn || computerShareDownloadBtn;
+      if (computerShareActionBtn) {
+        const item = computerShareActionBtn.closest('.simple-item');
+        const profileId = item?.dataset?.profileId;
+        if (!item || !profileId) return;
+
+        const profile = allProfiles.find((row) => String(row.id) === String(profileId));
+        if (!profile) return;
+
+        const onboardingRow = onboardingMap[profileId] || {};
+        const packDetails = packJsonMap[profileId] || packDetailsRowMap[profileId]?.pack_details || {};
+        const originalLabel = computerShareActionBtn.textContent;
+        computerShareActionBtn.disabled = true;
+        computerShareActionBtn.textContent = 'Preparing PDF...';
+
+        try {
+          const JsPdfCtor = await ensureJsPdfLoaded();
+          if (!JsPdfCtor) throw new Error('PDF library unavailable. Please refresh and try again.');
+          const report = buildComputerSharePdfReport(profile, onboardingRow, packDetails, JsPdfCtor);
+          if (!report) throw new Error('Could not build ComputerShare account creation PDF.');
+
+          if (computerShareViewBtn) {
+            const blob = report.doc.output('blob');
+            const opened = openPdfBlobInNewTab(blob);
+            if (!opened) report.doc.save(report.filename);
+          } else {
+            report.doc.save(report.filename);
+          }
+        } catch (error) {
+          console.error('ComputerShare PDF generation failed:', error);
+          alert(error?.message || 'Unable to generate ComputerShare account creation PDF right now.');
+        } finally {
+          computerShareActionBtn.disabled = false;
+          computerShareActionBtn.textContent = originalLabel;
         }
       }
 
