@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Strategies · Mint dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      overflow: auto;
+    }
+
+    .gradient-bg {
+      background: #f5f6fa;
+    }
+
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 75px;
+      height: 100vh;
+      background: rgba(255, 255, 255, 0.86);
+      backdrop-filter: blur(8px);
+      border-right: 1px solid #e8defa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 0;
+      z-index: 1000;
+    }
+
+    .sidebar-logo {
+      width: 45px;
+      height: 45px;
+      background: transparent;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 40px;
+      cursor: pointer;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      width: 100%;
+      padding: 0 15px;
+    }
+
+    .nav-icon {
+      width: 45px;
+      height: 45px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .nav-icon svg {
+      width: 22px;
+      height: 22px;
+      fill: #9ca3af;
+      transition: fill 0.3s ease;
+    }
+
+    .nav-icon:hover svg,
+    .nav-icon.active svg {
+      fill: #374151;
+    }
+
+    .main-content {
+      margin-left: 75px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .top-nav {
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #e8defa;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .top-search {
+      flex: 1;
+      max-width: 520px;
+      position: relative;
+    }
+
+    .top-search input {
+      width: 100%;
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      padding: 0 14px;
+      font-size: 0.9rem;
+      color: #111827;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .top-search input:focus {
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+      background: #ffffff;
+    }
+
+    .signout-btn {
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      color: #374151;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .signout-btn:hover {
+      background: #f9fafb;
+      border-color: #d1d5db;
+    }
+
+    .strategy-scroll-list {
+      max-height: 520px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .strategy-scroll-list::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .strategy-scroll-list::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 999px;
+    }
+
+    .holdings-list {
+      max-height: 320px;
+      overflow-y: auto;
+    }
+
+    .holdings-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .holdings-list::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 999px;
+    }
+
+    .security-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      max-height: 240px;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      margin-top: 4px;
+    }
+
+    .security-dropdown::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .security-dropdown::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 999px;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(4px);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 24px;
+      max-width: 560px;
+      width: 90%;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+      padding: 24px;
+    }
+
+    .modal-content::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .modal-content::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 999px;
+    }
+  </style>
+</head>
+<body class="gradient-bg min-h-screen">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <img src="/icon.png" alt="App logo" style="width: 32px; height: 32px;" />
+    </div>
+
+    <nav class="sidebar-nav">
+      <a class="nav-icon" href="/dashboard.html" aria-label="Dashboard">
+        <svg viewBox="0 0 24 24">
+          <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+        </svg>
+      </a>
+
+      <a class="nav-icon" href="/index.html" aria-label="Profiles">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 12c1.66 0 3-1.34 3-3S13.66 6 12 6 9 7.34 9 9s1.34 3 3 3zm0 2c-2.22 0-6 1.11-6 3.33V19h12v-1.67C18 15.11 14.22 14 12 14z"/>
+        </svg>
+      </a>
+
+      <a class="nav-icon active" href="/strategies.html" aria-label="Strategies">
+        <svg viewBox="0 0 24 24">
+          <path d="M4 19h4v-4H4v4zm0-6h4V5H4v8zm6 6h4v-7h-4v7zm0-9h4V5h-4v5zm6 6h4v-10h-4v10zm0-12h4V5h-4v2z"/>
+        </svg>
+      </a>
+
+      <a class="nav-icon" href="/orderbook.html" aria-label="Orderbook">
+        <svg viewBox="0 0 24 24">
+          <path d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2z"/>
+        </svg>
+      </a>
+
+      <a class="nav-icon" href="#" aria-label="Settings">
+        <svg viewBox="0 0 24 24">
+          <path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.62l-1.92-3.32c-.11-.2-.36-.28-.58-.2l-2.39.96c-.5-.38-1.05-.7-1.66-.94l-.36-2.54A.488.488 0 0 0 14.9 2h-3.8c-.24 0-.44.17-.48.4l-.36 2.54c-.61.24-1.16.56-1.66.94l-2.39-.96a.5.5 0 0 0-.58.2L3.7 8.44c-.11.21-.06.48.12.62l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.62l1.92 3.32c.11.2.36.28.58.2l2.39-.96c.5.38 1.05.7 1.66.94l.36 2.54c.04.23.24.4.48.4h3.8c.24 0 .44-.17.48-.4l.36-2.54c.61-.24 1.16-.56 1.66-.94l2.39.96c.22.08.47 0 .58-.2l1.92-3.32a.5.5 0 0 0-.12-.62l-2.03-1.58zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5S10.07 8.5 12 8.5s3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>
+        </svg>
+      </a>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+    <div class="top-nav">
+      <div class="top-search">
+        <input id="strategySearch" type="search" placeholder="Search strategies..." aria-label="Search strategies">
+      </div>
+      <button class="signout-btn" id="signOutBtn">Sign out</button>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-5 py-5 space-y-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-semibold text-slate-900">Strategies</h1>
+          <p class="text-sm text-slate-500 mt-1">Create and manage investment strategies with auto-calculated metrics.</p>
+        </div>
+        <div class="flex items-center gap-3 text-xs text-slate-500">
+          <span id="strategiesTotalBadge" class="px-3 py-1 rounded-full bg-slate-100 text-slate-700">0 total</span>
+          <span id="strategiesPublicBadge" class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700">0 public</span>
+          <span id="strategiesActiveBadge" class="px-3 py-1 rounded-full bg-violet-50 text-violet-700">0 active</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        <section class="xl:col-span-5 space-y-4">
+          <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <h2 class="text-lg font-semibold text-slate-900">Create strategy</h2>
+                <p class="text-xs text-slate-500 mt-1">Add holdings to auto-calculate weights and minimum investment.</p>
+              </div>
+            </div>
+
+            <form id="strategyForm" class="space-y-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-slate-600 mb-1" for="strategyName">Strategy name</label>
+                  <input id="strategyName" name="name" type="text" required
+                    class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                    placeholder="Global Growth Fund" />
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-600 mb-1" for="strategyShortName">Short name</label>
+                  <input id="strategyShortName" name="short_name" type="text"
+                    class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                    placeholder="GGF" />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1" for="strategyDescription">Description / objective</label>
+                <textarea id="strategyDescription" name="description" rows="2"
+                  class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 resize-none"
+                  placeholder="Briefly describe what this strategy aims to achieve."></textarea>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-slate-600 mb-1" for="strategyRisk">Risk level</label>
+                  <select id="strategyRisk" name="risk_level"
+                    class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500">
+                    <option value="">Unspecified</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-600 mb-1" for="strategySector">Sector</label>
+                  <input id="strategySector" name="sector" type="text"
+                    class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                    placeholder="Multi-asset, Equity…" />
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-600 mb-1" for="strategyCurrency">Base currency</label>
+                  <input id="strategyCurrency" name="base_currency" type="text"
+                    class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                    placeholder="ZAR" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="flex items-center gap-2">
+                  <input id="strategyIsPublic" name="is_public" type="checkbox"
+                    class="rounded border-slate-300 text-violet-600 focus:ring-violet-500" />
+                  <label for="strategyIsPublic" class="text-xs text-slate-700">Public</label>
+                </div>
+                <div class="flex items-center gap-2">
+                  <input id="strategyIsFeatured" name="is_featured" type="checkbox"
+                    class="rounded border-slate-300 text-violet-600 focus:ring-violet-500" />
+                  <label for="strategyIsFeatured" class="text-xs text-slate-700">Featured</label>
+                </div>
+              </div>
+
+              <div class="border-t border-slate-100 pt-3">
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-sm font-semibold text-slate-900">Holdings</h3>
+                  <span id="holdingsCount" class="text-xs text-slate-400">0 assets</span>
+                </div>
+                <div class="relative">
+                  <input id="securitySearch" type="text" autocomplete="off"
+                    class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                    placeholder="Search securities to add (e.g. NPN, Naspers)..." />
+                  <div id="securityDropdown" class="security-dropdown hidden"></div>
+                </div>
+                <div id="holdingsContainer" class="holdings-list mt-3 space-y-2"></div>
+              </div>
+
+              <div class="border-t border-slate-100 pt-3">
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="bg-slate-50 rounded-xl p-3 text-center">
+                    <p class="text-[11px] font-medium text-slate-500">Total Weight</p>
+                    <p id="totalWeightDisplay" class="text-lg font-semibold text-slate-900 mt-1">0%</p>
+                  </div>
+                  <div class="bg-violet-50 rounded-xl p-3 text-center">
+                    <p class="text-[11px] font-medium text-violet-600">Min. Investment</p>
+                    <p id="minInvestmentDisplay" class="text-lg font-semibold text-violet-700 mt-1">R 0</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between pt-2">
+                <p id="strategyFormMessage" class="text-xs text-slate-500"></p>
+                <button type="submit"
+                  class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold shadow-sm hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-1 transition-colors">
+                  <span>Save strategy</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="xl:col-span-7 space-y-4">
+          <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <div>
+                <h2 class="text-lg font-semibold text-slate-900">All strategies</h2>
+                <p class="text-xs text-slate-500 mt-1">Click a strategy to view details or open factsheet.</p>
+              </div>
+              <div class="flex flex-wrap items-center gap-2 text-xs">
+                <select id="filterRisk"
+                  class="border border-slate-300 rounded-full px-3 py-1 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500">
+                  <option value="">All risks</option>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+                <select id="filterVisibility"
+                  class="border border-slate-300 rounded-full px-3 py-1 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500">
+                  <option value="">All visibility</option>
+                  <option value="public">Public only</option>
+                  <option value="featured">Featured only</option>
+                  <option value="active">Active only</option>
+                </select>
+                <select id="sortBy"
+                  class="border border-slate-300 rounded-full px-3 py-1 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500">
+                  <option value="recent">Newest first</option>
+                  <option value="name">Name A-Z</option>
+                  <option value="holdings_desc">Most holdings</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="strategiesList" class="strategy-scroll-list space-y-3 text-sm text-slate-600"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <div id="strategyModal" class="modal-backdrop hidden">
+    <div class="modal-content" id="strategyModalContent"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://mfxnghmuccevsxwcetej.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1meG5naG11Y2NldnN4d2NldGVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NTI1ODAsImV4cCI6MjA4NDQyODU4MH0.lktfglzBMaHd79hLFDRH1HHSwsEwZ56Tv6e287kQiFg';
+
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const strategySearch = document.getElementById('strategySearch');
+    const signOutBtn = document.getElementById('signOutBtn');
+    const strategyForm = document.getElementById('strategyForm');
+    const strategyFormMessage = document.getElementById('strategyFormMessage');
+    const strategiesList = document.getElementById('strategiesList');
+    const strategiesTotalBadge = document.getElementById('strategiesTotalBadge');
+    const strategiesPublicBadge = document.getElementById('strategiesPublicBadge');
+    const strategiesActiveBadge = document.getElementById('strategiesActiveBadge');
+    const filterRisk = document.getElementById('filterRisk');
+    const filterVisibility = document.getElementById('filterVisibility');
+    const sortBy = document.getElementById('sortBy');
+    const securitySearchInput = document.getElementById('securitySearch');
+    const securityDropdown = document.getElementById('securityDropdown');
+    const holdingsContainer = document.getElementById('holdingsContainer');
+    const holdingsCountEl = document.getElementById('holdingsCount');
+    const totalWeightDisplay = document.getElementById('totalWeightDisplay');
+    const minInvestmentDisplay = document.getElementById('minInvestmentDisplay');
+    const strategyModal = document.getElementById('strategyModal');
+    const strategyModalContent = document.getElementById('strategyModalContent');
+
+    let allStrategies = [];
+    let formHoldings = [];
+    let securitiesCache = [];
+    let searchTimeout = null;
+
+    const normalizeSymbol = (symbol) => {
+      if (typeof symbol !== 'string') return symbol;
+      const trimmed = symbol.trim();
+      if (!trimmed) return symbol;
+      return trimmed.split('.')[0].toUpperCase();
+    };
+
+    const riskBadgeClass = (risk) => {
+      switch ((risk || '').toLowerCase()) {
+        case 'low': return 'bg-emerald-100 text-emerald-700';
+        case 'medium': return 'bg-amber-100 text-amber-700';
+        case 'high': return 'bg-rose-100 text-rose-700';
+        default: return 'bg-slate-100 text-slate-600';
+      }
+    };
+
+    const createStrategySlug = (value) => {
+      const base = String(value || '')
+        .toLowerCase().trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 48);
+      const fallback = base || 'strategy';
+      const unique = Date.now().toString(36).slice(-6);
+      return `${fallback}-${unique}`;
+    };
+
+    const formatCurrency = (value, currency = 'ZAR') => {
+      if (value === null || value === undefined) return 'Not calculated';
+      const numeric = Number(value);
+      if (Number.isNaN(numeric) || numeric === 0) return 'Not calculated';
+      try {
+        return new Intl.NumberFormat('en-ZA', {
+          style: 'currency',
+          currency,
+          maximumFractionDigits: 0
+        }).format(numeric);
+      } catch {
+        return `R ${numeric.toLocaleString()}`;
+      }
+    };
+
+    const searchSecurities = async (query) => {
+      if (!query || query.length < 1) {
+        securityDropdown.classList.add('hidden');
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from('securities')
+        .select('symbol, name, logo_url, last_price')
+        .or(`symbol.ilike.%${query}%,name.ilike.%${query}%`)
+        .limit(20);
+
+      if (error || !data || data.length === 0) {
+        securityDropdown.classList.add('hidden');
+        return;
+      }
+
+      const existingSymbols = new Set(formHoldings.map(h => h.symbol));
+      const filtered = data.filter(s => !existingSymbols.has(s.symbol));
+
+      if (filtered.length === 0) {
+        securityDropdown.classList.add('hidden');
+        return;
+      }
+
+      securityDropdown.innerHTML = filtered.map(s => `
+        <button type="button" data-symbol="${s.symbol}" data-name="${s.name || s.symbol}" data-price="${s.last_price || 0}" data-logo="${s.logo_url || ''}"
+          class="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-slate-50 transition-colors first:rounded-t-xl last:rounded-b-xl">
+          <div class="w-7 h-7 rounded-lg border border-slate-200 bg-white flex items-center justify-center overflow-hidden flex-shrink-0">
+            ${s.logo_url
+              ? `<img src="${s.logo_url}" alt="${s.symbol}" class="w-full h-full object-cover" />`
+              : `<span class="text-[10px] font-semibold text-slate-400">${(s.symbol || '').slice(0, 2)}</span>`
+            }
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-slate-900 truncate">${s.name || s.symbol}</p>
+            <p class="text-xs text-slate-400">${s.symbol}</p>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <p class="text-xs font-medium text-slate-700">${s.last_price ? 'R ' + (Number(s.last_price) / 100).toFixed(2) : 'N/A'}</p>
+          </div>
+        </button>
+      `).join('');
+
+      securityDropdown.classList.remove('hidden');
+
+      securityDropdown.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          addHolding({
+            symbol: btn.dataset.symbol,
+            name: btn.dataset.name,
+            last_price: Number(btn.dataset.price) || 0,
+            logo_url: btn.dataset.logo || null,
+            shares: 1,
+            weight: 0
+          });
+          securitySearchInput.value = '';
+          securityDropdown.classList.add('hidden');
+        });
+      });
+    };
+
+    const addHolding = (holding) => {
+      formHoldings.push(holding);
+      renderHoldings();
+      recalculate();
+    };
+
+    const removeHolding = (index) => {
+      formHoldings.splice(index, 1);
+      renderHoldings();
+      recalculate();
+    };
+
+    const updateHoldingShares = (index, shares) => {
+      formHoldings[index].shares = Math.max(1, Number(shares) || 1);
+      recalculate();
+    };
+
+    const recalculate = () => {
+      let totalMarketValue = 0;
+      formHoldings.forEach(h => {
+        const price = h.last_price ? Number(h.last_price) / 100 : 0;
+        h.market_value = h.shares * price;
+        totalMarketValue += h.market_value;
+      });
+
+      formHoldings.forEach(h => {
+        h.weight = totalMarketValue > 0 ? (h.market_value / totalMarketValue) * 100 : 0;
+      });
+
+      const totalWeight = formHoldings.reduce((sum, h) => sum + h.weight, 0);
+      totalWeightDisplay.textContent = totalWeight > 0 ? totalWeight.toFixed(1) + '%' : '0%';
+      totalWeightDisplay.className = 'text-lg font-semibold mt-1 ' + (Math.abs(totalWeight - 100) < 0.5 ? 'text-emerald-700' : 'text-slate-900');
+
+      const minInvestment = totalMarketValue > 0 ? Math.round(totalMarketValue) : 0;
+      minInvestmentDisplay.textContent = minInvestment > 0 ? formatCurrency(minInvestment) : 'R 0';
+
+      holdingsCountEl.textContent = formHoldings.length + ' asset' + (formHoldings.length !== 1 ? 's' : '');
+
+      document.querySelectorAll('.holding-weight').forEach((el, i) => {
+        if (formHoldings[i]) {
+          el.textContent = formHoldings[i].weight.toFixed(1) + '%';
+        }
+      });
+      document.querySelectorAll('.holding-mv').forEach((el, i) => {
+        if (formHoldings[i]) {
+          el.textContent = 'R ' + formHoldings[i].market_value.toFixed(2);
+        }
+      });
+    };
+
+    const renderHoldings = () => {
+      if (formHoldings.length === 0) {
+        holdingsContainer.innerHTML = `
+          <div class="text-center py-4 border border-dashed border-slate-200 rounded-xl">
+            <p class="text-xs text-slate-400">No holdings added yet</p>
+            <p class="text-[11px] text-slate-400 mt-1">Search and add securities above</p>
+          </div>`;
+        return;
+      }
+
+      holdingsContainer.innerHTML = formHoldings.map((h, i) => `
+        <div class="border border-slate-200 rounded-xl p-3 flex items-center gap-3 group hover:border-violet-200 transition-colors">
+          <div class="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center overflow-hidden flex-shrink-0">
+            ${h.logo_url
+              ? `<img src="${h.logo_url}" alt="${h.symbol}" class="w-full h-full object-cover" />`
+              : `<span class="text-[10px] font-semibold text-slate-400">${(h.symbol || '').slice(0, 2)}</span>`
+            }
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-xs font-semibold text-slate-900 truncate">${h.symbol}</p>
+            <p class="text-[11px] text-slate-400 truncate">${h.name || h.symbol}</p>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <div class="text-right">
+              <p class="text-[10px] text-slate-400">Shares</p>
+              <input type="number" min="1" value="${h.shares}" data-index="${i}"
+                class="holding-shares-input w-16 text-right border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-violet-500" />
+            </div>
+            <div class="text-right w-14">
+              <p class="text-[10px] text-slate-400">Weight</p>
+              <p class="holding-weight text-xs font-semibold text-violet-700">${h.weight.toFixed(1)}%</p>
+            </div>
+            <div class="text-right w-20">
+              <p class="text-[10px] text-slate-400">Mkt Value</p>
+              <p class="holding-mv text-xs font-medium text-slate-700">R ${(h.market_value || 0).toFixed(2)}</p>
+            </div>
+            <button type="button" data-remove="${i}"
+              class="w-6 h-6 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center hover:bg-rose-100 hover:text-rose-600 transition-colors flex-shrink-0">
+              <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      holdingsContainer.querySelectorAll('.holding-shares-input').forEach(input => {
+        input.addEventListener('input', (e) => {
+          updateHoldingShares(Number(e.target.dataset.index), e.target.value);
+        });
+      });
+
+      holdingsContainer.querySelectorAll('[data-remove]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          removeHolding(Number(btn.dataset.remove));
+        });
+      });
+    };
+
+    const calculateMinInvestmentFromHoldings = (holdings, securitiesMap) => {
+      if (!holdings || !holdings.length) return null;
+      let total = 0;
+      let matched = 0;
+      for (const holding of holdings) {
+        const symbol = holding.ticker || holding.symbol || holding;
+        const normalizedSym = normalizeSymbol(symbol);
+        const security = securitiesMap.get(symbol) || securitiesMap.get(normalizedSym);
+        if (security && security.last_price != null) {
+          const shares = Number(holding.shares || holding.quantity || 1);
+          total += shares * (Number(security.last_price) / 100);
+          matched++;
+        }
+      }
+      return matched > 0 ? Math.round(total) : null;
+    };
+
+    const renderStrategyCard = (strategy, securitiesMap) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'border border-slate-200 rounded-2xl p-4 cursor-pointer hover:border-violet-300 hover:shadow-md transition-all';
+
+      const name = strategy.name || 'Untitled strategy';
+      const shortName = strategy.short_name || '';
+      const description = strategy.description || strategy.objective || '';
+      const sector = strategy.sector || 'Unspecified';
+      const risk = (strategy.risk_level || 'unspecified').toLowerCase();
+      const currency = strategy.base_currency || 'ZAR';
+      const holdings = Array.isArray(strategy.holdings) ? strategy.holdings : [];
+      const holdingsCount = holdings.length;
+      const status = strategy.status || 'draft';
+
+      let minInvestment = null;
+      if (securitiesMap && holdingsCount > 0) {
+        minInvestment = calculateMinInvestmentFromHoldings(holdings, securitiesMap);
+      }
+      if (!minInvestment && strategy.min_investment) {
+        minInvestment = Number(strategy.min_investment);
+      }
+
+      const totalWeight = holdings.reduce((sum, h) => sum + (Number(h.weight) || 0), 0);
+
+      const holdingsPreview = holdings.slice(0, 4).map(h => {
+        const rawSym = h.ticker || h.symbol || (typeof h === 'string' ? h : '');
+        const sym = typeof rawSym === 'string' ? rawSym : String(rawSym || '');
+        const sec = securitiesMap ? (securitiesMap.get(sym) || securitiesMap.get(normalizeSymbol(sym))) : null;
+        const logoUrl = sec?.logo_url || null;
+        return `<div class="w-6 h-6 rounded-full border border-white bg-white shadow-sm flex items-center justify-center overflow-hidden">
+          ${logoUrl
+            ? `<img src="${logoUrl}" alt="${sym}" class="w-full h-full object-cover" />`
+            : `<div class="w-full h-full bg-slate-100 flex items-center justify-center text-[8px] font-bold text-slate-500">${sym.slice(0, 2)}</div>`
+          }
+        </div>`;
+      }).join('');
+
+      wrapper.innerHTML = `
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2 mb-1 flex-wrap">
+              <p class="font-semibold text-slate-900">${name}</p>
+              ${shortName ? `<span class="text-xs text-slate-400">(${shortName})</span>` : ''}
+              ${strategy.is_featured ? '<span class="px-2 py-0.5 text-[10px] rounded-full bg-amber-100 text-amber-700 font-semibold">Featured</span>' : ''}
+              ${strategy.is_public ? '<span class="px-2 py-0.5 text-[10px] rounded-full bg-emerald-100 text-emerald-700 font-semibold">Public</span>' : ''}
+              <span class="px-2 py-0.5 text-[10px] rounded-full font-semibold ${status === 'active' ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-500'}">${status}</span>
+            </div>
+            ${description ? `<p class="text-xs text-slate-500 mb-2 line-clamp-2">${description}</p>` : ''}
+            <div class="flex items-center gap-4 text-[11px] text-slate-400">
+              <span>Sector: ${sector}</span>
+              <span>${holdingsCount} holding${holdingsCount !== 1 ? 's' : ''}</span>
+              ${totalWeight > 0 ? `<span>Weight: ${totalWeight.toFixed(1)}%</span>` : ''}
+            </div>
+          </div>
+          <div class="flex flex-col items-end gap-1 flex-shrink-0">
+            <span class="px-2 py-0.5 text-[11px] rounded-full ${riskBadgeClass(risk)}">${risk}</span>
+            <span class="text-xs font-medium text-slate-700">${minInvestment ? formatCurrency(minInvestment, currency) : 'No min'}</span>
+          </div>
+        </div>
+        ${holdingsCount > 0 ? `
+        <div class="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
+          <div class="flex -space-x-1.5">${holdingsPreview}</div>
+          ${holdingsCount > 4 ? `<span class="text-[11px] text-slate-400">+${holdingsCount - 4} more</span>` : ''}
+          <div class="flex-1"></div>
+          <a href="/factsheet.html?id=${strategy.id}" class="text-[11px] font-semibold text-violet-600 hover:text-violet-700 transition-colors" onclick="event.stopPropagation()">View factsheet &rarr;</a>
+        </div>` : ''}
+      `;
+
+      wrapper.addEventListener('click', () => openStrategyModal(strategy, securitiesMap));
+      return wrapper;
+    };
+
+    const openStrategyModal = async (strategy, securitiesMap) => {
+      const holdings = Array.isArray(strategy.holdings) ? strategy.holdings : [];
+
+      if (holdings.length > 0 && (!securitiesMap || securitiesMap.size === 0)) {
+        const symbols = holdings.map(h => h.ticker || h.symbol || h);
+        const { data } = await supabaseClient
+          .from('securities')
+          .select('symbol, name, logo_url, last_price, change_percent')
+          .in('symbol', symbols);
+        if (data) {
+          securitiesMap = new Map();
+          data.forEach(s => {
+            securitiesMap.set(s.symbol, s);
+            const norm = normalizeSymbol(s.symbol);
+            if (norm !== s.symbol) securitiesMap.set(norm, s);
+          });
+        }
+      }
+
+      const totalWeight = holdings.reduce((sum, h) => sum + (Number(h.weight) || 0), 0);
+      const minInvestment = calculateMinInvestmentFromHoldings(holdings, securitiesMap || new Map());
+
+      const holdingsRows = holdings.map(h => {
+        const sym = h.ticker || h.symbol || h;
+        const sec = securitiesMap ? (securitiesMap.get(sym) || securitiesMap.get(normalizeSymbol(sym))) : null;
+        const price = sec?.last_price ? (Number(sec.last_price) / 100) : 0;
+        const shares = Number(h.shares || h.quantity || 1);
+        const mv = shares * price;
+        const weightNorm = totalWeight > 0 ? ((Number(h.weight) || 0) / totalWeight) * 100 : 0;
+        const dailyChange = sec?.change_percent != null ? Number(sec.change_percent) : null;
+
+        return `
+          <div class="flex items-center gap-3 py-2">
+            <div class="w-9 h-9 rounded-lg border border-slate-200 bg-white flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
+              ${sec?.logo_url
+                ? `<img src="${sec.logo_url}" alt="${sym}" class="w-full h-full object-cover" />`
+                : `<span class="text-xs font-semibold text-slate-400">${(sym || '').slice(0, 2)}</span>`
+              }
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-slate-900">${sym}</p>
+              <p class="text-xs text-slate-500 truncate">${sec?.name || sym}</p>
+            </div>
+            <div class="text-right">
+              <p class="text-xs font-semibold text-slate-900">${shares} share${shares !== 1 ? 's' : ''}</p>
+              <p class="text-[11px] text-slate-400">R ${mv.toFixed(2)}</p>
+            </div>
+            <div class="text-right w-16">
+              <p class="text-xs font-semibold text-violet-700">${weightNorm.toFixed(1)}%</p>
+              ${dailyChange != null
+                ? `<p class="text-[11px] font-medium ${dailyChange >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${dailyChange >= 0 ? '+' : ''}${dailyChange.toFixed(2)}%</p>`
+                : '<p class="text-[11px] text-slate-400">-</p>'
+              }
+            </div>
+          </div>`;
+      }).join('');
+
+      strategyModalContent.innerHTML = `
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-xl font-semibold text-slate-900">${strategy.name || 'Untitled'}</h2>
+            <p class="text-sm text-slate-500 mt-1">${strategy.short_name || ''} ${strategy.sector ? '· ' + strategy.sector : ''}</p>
+          </div>
+          <button type="button" onclick="closeStrategyModal()"
+            class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition-colors flex-shrink-0">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        ${strategy.description ? `<p class="text-sm text-slate-600 mb-4">${strategy.description}</p>` : ''}
+
+        <div class="flex flex-wrap gap-2 mb-4">
+          <span class="px-3 py-1 text-xs font-semibold rounded-full ${riskBadgeClass(strategy.risk_level)}">${(strategy.risk_level || 'Unspecified')}</span>
+          <span class="px-3 py-1 text-xs font-semibold rounded-full ${strategy.status === 'active' ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-500'}">${strategy.status || 'draft'}</span>
+          ${strategy.is_public ? '<span class="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700">Public</span>' : ''}
+          ${strategy.is_featured ? '<span class="px-3 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">Featured</span>' : ''}
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 mb-4">
+          <div class="bg-slate-50 rounded-xl p-3 text-center">
+            <p class="text-[11px] text-slate-500">Holdings</p>
+            <p class="text-lg font-semibold text-slate-900">${holdings.length}</p>
+          </div>
+          <div class="bg-slate-50 rounded-xl p-3 text-center">
+            <p class="text-[11px] text-slate-500">Total Weight</p>
+            <p class="text-lg font-semibold text-slate-900">${totalWeight.toFixed(1)}%</p>
+          </div>
+          <div class="bg-violet-50 rounded-xl p-3 text-center">
+            <p class="text-[11px] text-violet-600">Min. Investment</p>
+            <p class="text-lg font-semibold text-violet-700">${minInvestment ? formatCurrency(minInvestment) : 'N/A'}</p>
+          </div>
+        </div>
+
+        ${holdings.length > 0 ? `
+        <div class="border-t border-slate-100 pt-4">
+          <h3 class="text-sm font-semibold text-slate-900 mb-3">Portfolio Holdings</h3>
+          <div class="space-y-1 divide-y divide-slate-100">${holdingsRows}</div>
+        </div>` : '<p class="text-sm text-slate-400 text-center py-4">No holdings configured for this strategy.</p>'}
+
+        <div class="flex gap-3 mt-5 pt-4 border-t border-slate-100">
+          <a href="/factsheet.html?id=${strategy.id}"
+            class="flex-1 text-center px-4 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition-colors">
+            View Factsheet
+          </a>
+          <button type="button" onclick="closeStrategyModal()"
+            class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors">
+            Close
+          </button>
+        </div>
+      `;
+
+      strategyModal.classList.remove('hidden');
+    };
+
+    window.closeStrategyModal = () => {
+      strategyModal.classList.add('hidden');
+    };
+
+    strategyModal.addEventListener('click', (e) => {
+      if (e.target === strategyModal) closeStrategyModal();
+    });
+
+    const applyFiltersAndRender = async () => {
+      let items = [...allStrategies];
+
+      const searchText = (strategySearch?.value || '').trim().toLowerCase();
+      if (searchText) {
+        items = items.filter((item) => {
+          const text = [item.name, item.short_name, item.description, item.objective, item.sector]
+            .filter(Boolean).join(' ').toLowerCase();
+          return text.includes(searchText);
+        });
+      }
+
+      const riskValue = filterRisk?.value || '';
+      if (riskValue) {
+        items = items.filter((item) => (item.risk_level || '').toLowerCase() === riskValue);
+      }
+
+      const visValue = filterVisibility?.value || '';
+      if (visValue === 'public') items = items.filter((item) => item.is_public);
+      else if (visValue === 'featured') items = items.filter((item) => item.is_featured);
+      else if (visValue === 'active') items = items.filter((item) => item.status === 'active');
+
+      const sortValue = sortBy?.value || 'recent';
+      if (sortValue === 'name') {
+        items.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      } else if (sortValue === 'holdings_desc') {
+        items.sort((a, b) => {
+          const aH = Array.isArray(a.holdings) ? a.holdings.length : 0;
+          const bH = Array.isArray(b.holdings) ? b.holdings.length : 0;
+          return bH - aH;
+        });
+      } else {
+        items.sort((a, b) => {
+          const aCreated = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const bCreated = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return bCreated - aCreated;
+        });
+      }
+
+      const allSymbols = new Set();
+      items.forEach(item => {
+        const holdings = Array.isArray(item.holdings) ? item.holdings : [];
+        holdings.forEach(h => {
+          const sym = h.ticker || h.symbol || h;
+          allSymbols.add(sym);
+          allSymbols.add(normalizeSymbol(sym));
+        });
+      });
+
+      let securitiesMap = new Map();
+      if (allSymbols.size > 0) {
+        const symbolArr = [...allSymbols];
+        const chunks = [];
+        for (let i = 0; i < symbolArr.length; i += 50) {
+          chunks.push(symbolArr.slice(i, i + 50));
+        }
+        const results = await Promise.all(
+          chunks.map(chunk => supabaseClient.from('securities').select('symbol, name, logo_url, last_price, change_percent').in('symbol', chunk))
+        );
+        results.forEach(({ data }) => {
+          if (data) data.forEach(s => {
+            securitiesMap.set(s.symbol, s);
+            const norm = normalizeSymbol(s.symbol);
+            if (norm !== s.symbol) securitiesMap.set(norm, s);
+          });
+        });
+      }
+
+      strategiesList.innerHTML = '';
+      if (!items.length) {
+        strategiesList.innerHTML = '<div class="text-sm text-slate-500 text-center py-6">No strategies match your filters.</div>';
+        return;
+      }
+
+      items.forEach((item) => strategiesList.appendChild(renderStrategyCard(item, securitiesMap)));
+    };
+
+    const updateBadges = () => {
+      const total = allStrategies.length;
+      const publicCount = allStrategies.filter((s) => s.is_public).length;
+      const activeCount = allStrategies.filter((s) => s.status === 'active').length;
+      if (strategiesTotalBadge) strategiesTotalBadge.textContent = `${total} total`;
+      if (strategiesPublicBadge) strategiesPublicBadge.textContent = `${publicCount} public`;
+      if (strategiesActiveBadge) strategiesActiveBadge.textContent = `${activeCount} active`;
+    };
+
+    const loadStrategies = async () => {
+      const { data, error } = await supabaseClient
+        .from('strategies')
+        .select('id, name, short_name, description, objective, risk_level, sector, min_investment, base_currency, is_featured, is_public, status, holdings, created_at')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to load strategies', error);
+        strategiesList.innerHTML = '<div class="text-sm text-slate-500">Could not load strategies.</div>';
+        return;
+      }
+
+      allStrategies = data || [];
+      updateBadges();
+      applyFiltersAndRender();
+    };
+
+    const showFormMessage = (text, type = 'info') => {
+      if (!strategyFormMessage) return;
+      strategyFormMessage.textContent = text || '';
+      strategyFormMessage.className = 'text-xs ' + (type === 'error'
+        ? 'text-rose-600'
+        : type === 'success'
+          ? 'text-emerald-600'
+          : 'text-slate-500');
+    };
+
+    const handleStrategySubmit = async (event) => {
+      event.preventDefault();
+      if (!strategyForm) return;
+
+      recalculate();
+
+      const formData = new FormData(strategyForm);
+
+      const holdingsWithMissingPrice = formHoldings.filter(h => !h.last_price || Number(h.last_price) === 0);
+      if (holdingsWithMissingPrice.length > 0) {
+        const missingSymbols = holdingsWithMissingPrice.map(h => h.symbol).join(', ');
+        showFormMessage(`Price data missing for: ${missingSymbols}. Weights and min investment may be inaccurate.`, 'error');
+      }
+
+      const holdingsPayload = formHoldings.map(h => ({
+        symbol: h.symbol,
+        ticker: h.symbol,
+        name: h.name || h.symbol,
+        shares: h.shares,
+        quantity: h.shares,
+        weight: Number(h.weight.toFixed(2))
+      }));
+
+      let totalMarketValue = 0;
+      formHoldings.forEach(h => {
+        totalMarketValue += h.market_value || 0;
+      });
+
+      const isPublic = strategyForm.querySelector('#strategyIsPublic')?.checked || false;
+
+      const payload = {
+        slug: '',
+        name: (formData.get('name') || '').toString().trim() || null,
+        short_name: (formData.get('short_name') || '').toString().trim() || null,
+        description: (formData.get('description') || '').toString().trim() || null,
+        objective: (formData.get('description') || '').toString().trim() || null,
+        risk_level: (formData.get('risk_level') || '').toString().trim() || null,
+        sector: (formData.get('sector') || '').toString().trim() || null,
+        min_investment: totalMarketValue > 0 ? Math.round(totalMarketValue) : null,
+        base_currency: (formData.get('base_currency') || '').toString().trim() || 'ZAR',
+        is_public: isPublic,
+        is_featured: strategyForm.querySelector('#strategyIsFeatured')?.checked || false,
+        status: 'active',
+        holdings: holdingsPayload.length > 0 ? holdingsPayload : null
+      };
+
+      if (!payload.name) {
+        showFormMessage('Please provide at least a strategy name.', 'error');
+        return;
+      }
+
+      if (!isPublic) {
+        showFormMessage('Note: Strategy will not be visible on Mint unless "Public" is checked. Saving anyway...', 'info');
+      }
+
+      payload.slug = createStrategySlug(payload.short_name || payload.name);
+
+      showFormMessage('Saving strategy...', 'info');
+
+      const submitButton = strategyForm.querySelector('button[type="submit"]');
+      const originalText = submitButton ? submitButton.innerHTML : '';
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<span>Saving...</span>';
+      }
+
+      const { error } = await supabaseClient
+        .from('strategies')
+        .insert([payload]);
+
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalText || '<span>Save strategy</span>';
+      }
+
+      if (error) {
+        console.error('Failed to create strategy', error);
+        showFormMessage('Could not save strategy. Please try again.', 'error');
+        return;
+      }
+
+      strategyForm.reset();
+      formHoldings = [];
+      renderHoldings();
+      recalculate();
+      showFormMessage('Strategy saved and will appear on Mint.', 'success');
+      await loadStrategies();
+    };
+
+    const requireSession = async () => {
+      const { data } = await supabaseClient.auth.getSession();
+      if (!data.session) {
+        window.location.href = '/signin.html';
+        return false;
+      }
+      return true;
+    };
+
+    if (signOutBtn) {
+      signOutBtn.addEventListener('click', async () => {
+        await supabaseClient.auth.signOut();
+        window.location.href = '/signin.html';
+      });
+    }
+
+    if (strategyForm) {
+      strategyForm.addEventListener('submit', handleStrategySubmit);
+    }
+
+    if (strategySearch) {
+      strategySearch.addEventListener('input', () => applyFiltersAndRender());
+    }
+
+    securitySearchInput.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        searchSecurities(securitySearchInput.value.trim());
+      }, 300);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!securitySearchInput.contains(e.target) && !securityDropdown.contains(e.target)) {
+        securityDropdown.classList.add('hidden');
+      }
+    });
+
+    [filterRisk, filterVisibility, sortBy].forEach((el) => {
+      if (el) el.addEventListener('change', () => applyFiltersAndRender());
+    });
+
+    renderHoldings();
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      const ok = await requireSession();
+      if (!ok) return;
+      await loadStrategies();
+    });
+  </script>
+</body>
+</html>

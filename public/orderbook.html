@@ -1,0 +1,3415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mint Orderbook</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #f5f6fa;
+      --surface: #ffffff;
+      --border: #e8defa;
+      --text: #22163a;
+      --text-muted: #6b7280;
+      --primary: #7c3aed;
+      --shadow: 0 14px 34px rgba(80, 38, 157, 0.1);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      color: var(--text);
+    }
+
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 75px;
+      height: 100vh;
+      background: rgba(255, 255, 255, 0.86);
+      backdrop-filter: blur(8px);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 0;
+      z-index: 1000;
+    }
+
+    .sidebar-logo {
+      width: 45px;
+      height: 45px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 40px;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      width: 100%;
+      padding: 0 15px;
+    }
+
+    .nav-icon {
+      width: 45px;
+      height: 45px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.25s ease;
+    }
+
+    .nav-icon svg {
+      width: 22px;
+      height: 22px;
+      fill: #9ca3af;
+      transition: fill 0.25s ease;
+    }
+
+    .nav-icon:hover svg,
+    .nav-icon.active svg {
+      fill: #374151;
+    }
+
+    .main-content {
+      margin-left: 75px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .top-nav {
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .top-search {
+      flex: 1;
+      max-width: 520px;
+    }
+
+    .top-search input {
+      width: 100%;
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      padding: 0 14px;
+      font-size: 0.9rem;
+      color: #111827;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .top-search input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+      background: #ffffff;
+    }
+
+    .signout-btn {
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      color: #374151;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .signout-btn:hover {
+      background: #f9fafb;
+      border-color: #d1d5db;
+    }
+
+    .orderbook-wrap {
+      padding: 24px 32px;
+    }
+
+    .orderbook-tabs {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      margin-bottom: 16px;
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      box-shadow: var(--shadow);
+    }
+
+    .orderbook-tab-btn {
+      border: 1px solid transparent;
+      background: transparent;
+      color: #4b5563;
+      font-size: 0.84rem;
+      font-weight: 700;
+      border-radius: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .orderbook-tab-btn:hover {
+      background: #f9fafb;
+      color: #1f2937;
+    }
+
+    .orderbook-tab-btn.active {
+      background: #f5f3ff;
+      color: #6d28d9;
+      border-color: #ddd6fe;
+    }
+
+    .orderbook-tab-panel {
+      display: none;
+    }
+
+    .orderbook-tab-panel.active {
+      display: block;
+    }
+
+    .orderbook-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 22px;
+    }
+
+    .orderbook-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+
+    .orderbook-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .orderbook-timer {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #6b7280;
+      border: 1px solid #e5e7eb;
+      border-radius: 999px;
+      padding: 5px 10px;
+      background: #ffffff;
+      min-width: 92px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      transition: all 0.2s ease;
+    }
+
+    .orderbook-timer.is-hit {
+      color: #7c3aed;
+      border-color: #c4b5fd;
+      background: #f5f3ff;
+      box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.12);
+    }
+
+    .orderbook-subtitle {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+    }
+
+    .orderbook-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .orderbook-toolbar-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .orderbook-count {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .orderbook-export-btn {
+      height: 38px;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      color: #374151;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .orderbook-export-btn:hover {
+      background: #f9fafb;
+      border-color: #d1d5db;
+    }
+
+    .orderbook-export-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .orderbook-export-btn.is-active {
+      background: #f5f3ff;
+      color: #6d28d9;
+      border-color: #ddd6fe;
+    }
+
+    .strate-bir-filter-select {
+      height: 38px;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      color: #374151;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0 10px;
+      min-width: 146px;
+    }
+
+    .strate-bir-group-row td {
+      background: #f8fafc;
+      color: #334155;
+      font-weight: 700;
+      cursor: pointer;
+      border-top: 1px solid #e5e7eb;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .strate-bir-group-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .strate-bir-group-caret {
+      font-size: 0.78rem;
+      width: 12px;
+      text-align: center;
+      color: #6366f1;
+    }
+
+    .strate-bir-group-count {
+      color: #64748b;
+      font-weight: 600;
+      font-size: 0.78rem;
+    }
+
+    .strate-bir-group-member.is-hidden {
+      display: none;
+    }
+
+    .strate-bir-individual-row {
+      cursor: pointer;
+    }
+
+    .strate-bir-individual-row:hover td {
+      background: #f8fafc;
+    }
+
+    .strate-bir-individual-details {
+      background: #f8fafc;
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .strate-bir-individual-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .strate-bir-individual-kv {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .strate-bir-individual-kv strong {
+      display: block;
+      font-size: 0.74rem;
+      color: #64748b;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .strate-bir-individual-kv span {
+      font-size: 0.84rem;
+      color: #1f2937;
+      font-weight: 600;
+    }
+
+    .orderbook-table-wrap {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      background: #ffffff;
+    }
+
+    .orderbook-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1020px;
+    }
+
+    .orderbook-table thead th {
+      background: #f9fafb;
+      color: #4b5563;
+      text-align: left;
+      font-size: 0.78rem;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      font-weight: 700;
+      padding: 12px 14px;
+      border-bottom: 1px solid #e5e7eb;
+      white-space: nowrap;
+    }
+
+    .orderbook-table tbody td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #f3f4f6;
+      color: #1f2937;
+      font-size: 0.86rem;
+      vertical-align: top;
+    }
+
+    .orderbook-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .orderbook-main-row {
+      cursor: pointer;
+    }
+
+    .orderbook-main-row:hover td {
+      background: #fafafa;
+    }
+
+    .orderbook-detail-row.is-hidden {
+      display: none;
+    }
+
+    .orderbook-detail-row td {
+      background: #fcfcff;
+      border-bottom: 1px solid #f3f4f6;
+      padding: 0;
+    }
+
+    .orderbook-detail-wrap {
+      padding: 12px;
+    }
+
+    .orderbook-detail-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+
+    .orderbook-detail-table-wrap {
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      background: #ffffff;
+    }
+
+    .orderbook-detail-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1120px;
+    }
+
+    .orderbook-detail-table thead th {
+      background: #f9fafb;
+      color: #4b5563;
+      text-align: left;
+      font-size: 0.74rem;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      font-weight: 700;
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e7eb;
+      white-space: nowrap;
+    }
+
+    .orderbook-detail-table tbody td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f3f4f6;
+      color: #1f2937;
+      font-size: 0.82rem;
+      vertical-align: top;
+      white-space: nowrap;
+    }
+
+    .orderbook-detail-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .orderbook-cell-muted {
+      color: #6b7280;
+      font-size: 0.82rem;
+    }
+
+    .orderbook-select {
+      width: 100%;
+      min-width: 130px;
+      height: 32px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 0 8px;
+      background: #ffffff;
+      color: #374151;
+      font-size: 0.8rem;
+      outline: none;
+    }
+
+    .orderbook-select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.14);
+    }
+
+    .orderbook-client {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .orderbook-client strong {
+      font-size: 0.85rem;
+      color: #111827;
+    }
+
+    .orderbook-empty-row {
+      text-align: center;
+      color: #6b7280;
+      font-style: italic;
+      background: #fafafa;
+    }
+
+    .strategy-badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: #6d28d9;
+      background: #f5f3ff;
+      border: 1px solid #ddd6fe;
+      border-radius: 4px;
+      padding: 1px 6px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    .orderbook-empty {
+      border: 1px dashed #d1d5db;
+      border-radius: 14px;
+      padding: 26px;
+      background: #fafafa;
+      color: #4b5563;
+      font-size: 0.92rem;
+    }
+
+    .filled-orderbooks-card {
+      margin-top: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 20px;
+    }
+
+    .filled-orderbooks-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 6px;
+    }
+
+    .filled-orderbooks-subtitle {
+      font-size: 0.84rem;
+      color: #6b7280;
+      margin-bottom: 12px;
+    }
+
+    .filled-orderbooks-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .filled-orderbook-item {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      background: #ffffff;
+      overflow: hidden;
+    }
+
+    .filled-orderbook-summary {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      cursor: pointer;
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .filled-orderbook-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .filled-orderbook-meta {
+      color: #6b7280;
+      font-size: 0.78rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .filled-orderbook-email-status {
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .filled-orderbook-email-status.sent {
+      background: #ecfdf3;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+
+    .filled-orderbook-email-status.failed {
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+
+    .filled-orderbook-email-status.retry {
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .filled-orderbook-email-status.retry:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 3px 8px rgba(153, 27, 27, 0.16);
+    }
+
+    .filled-orderbook-details {
+      padding: 0 12px 12px;
+    }
+
+    .filled-orderbook-empty {
+      border: 1px dashed #d1d5db;
+      border-radius: 12px;
+      background: #fafafa;
+      color: #6b7280;
+      font-size: 0.85rem;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .closed-books-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 20px;
+    }
+
+    .closed-books-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 6px;
+    }
+
+    .closed-books-subtitle {
+      font-size: 0.84rem;
+      color: #6b7280;
+      margin-bottom: 12px;
+    }
+
+    @media screen and (max-width: 768px) {
+      .sidebar {
+        display: none;
+      }
+
+      .main-content {
+        margin-left: 0;
+      }
+
+      .top-nav,
+      .orderbook-wrap {
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <img src="/icon.png" alt="App logo" style="width: 32px; height: 32px;" />
+    </div>
+
+    <nav class="sidebar-nav">
+      <a class="nav-icon" href="/dashboard.html" aria-label="Dashboard">
+        <svg viewBox="0 0 24 24">
+          <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+        </svg>
+      </a>
+
+      <a class="nav-icon" href="/index.html" aria-label="Profiles">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 12c1.66 0 3-1.34 3-3S13.66 6 12 6 9 7.34 9 9s1.34 3 3 3zm0 2c-2.22 0-6 1.11-6 3.33V19h12v-1.67C18 15.11 14.22 14 12 14z"/>
+        </svg>
+      </a>
+
+      <a class="nav-icon active" href="/orderbook.html" aria-label="Orderbook">
+        <svg viewBox="0 0 24 24">
+          <path d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2z"/>
+        </svg>
+      </a>
+
+      <a class="nav-icon" href="#" aria-label="Settings">
+        <svg viewBox="0 0 24 24">
+          <path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.62l-1.92-3.32c-.11-.2-.36-.28-.58-.2l-2.39.96c-.5-.38-1.05-.7-1.66-.94l-.36-2.54A.488.488 0 0 0 14.9 2h-3.8c-.24 0-.44.17-.48.4l-.36 2.54c-.61.24-1.16.56-1.66.94l-2.39-.96a.5.5 0 0 0-.58.2L3.7 8.44c-.11.21-.06.48.12.62l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.62l1.92 3.32c.11.2.36.28.58.2l2.39-.96c.5.38 1.05.7 1.66.94l.36 2.54c.04.23.24.4.48.4h3.8c.24 0 .44-.17.48-.4l.36-2.54c.61-.24 1.16-.56 1.66-.94l2.39.96c.22.08.47 0 .58-.2l1.92-3.32a.5.5 0 0 0-.12-.62l-2.03-1.58zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5S10.07 8.5 12 8.5s3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>
+        </svg>
+      </a>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+    <div class="top-nav">
+      <div class="top-search">
+        <input id="orderbookSearch" type="search" placeholder="Search instrument, ticker, side, account, or broker ref..." aria-label="Search orderbook">
+      </div>
+      <button class="signout-btn" id="signOutBtn">Sign out</button>
+    </div>
+
+    <section class="orderbook-wrap">
+      <div class="orderbook-tabs" role="tablist" aria-label="Orderbook tabs">
+        <button class="orderbook-tab-btn active" id="activeBooksTab" type="button" role="tab" aria-selected="true" aria-controls="activeBooksPanel">Active Books</button>
+        <button class="orderbook-tab-btn" id="closedBooksTab" type="button" role="tab" aria-selected="false" aria-controls="closedBooksPanel">Closed Books</button>
+        <button class="orderbook-tab-btn" id="strateBirTab" type="button" role="tab" aria-selected="false" aria-controls="strateBirPanel">Strate BIR</button>
+      </div>
+
+      <div class="orderbook-tab-panel active" id="activeBooksPanel" role="tabpanel" aria-labelledby="activeBooksTab">
+        <div class="orderbook-card">
+          <div class="orderbook-title-row">
+            <h1 class="orderbook-title" id="orderbookTitle">Orderbook :01</h1>
+            <div class="orderbook-timer" id="orderbookTimer" aria-live="polite">00:00:00</div>
+          </div>
+          <p class="orderbook-subtitle">Holdings ledger with export support.</p>
+          <div class="orderbook-toolbar">
+            <div class="orderbook-count" id="orderbookCount">0 records</div>
+            <button class="orderbook-export-btn" id="exportOrderbookBtn" type="button" disabled>Export CSV</button>
+          </div>
+          <div class="orderbook-table-wrap">
+            <table class="orderbook-table">
+              <thead>
+                <tr>
+                  <th>Line</th>
+                  <th>Instrument Name</th>
+                  <th>Ticker</th>
+                  <th>Side</th>
+                  <th>Total QYT</th>
+                  <th>Avg Fill</th>
+                  <th>Market Value</th>
+                  <th>Order Type</th>
+                  <th>Settlement Account</th>
+                  <th>Broker Ref</th>
+                  <th>Unrealized PnL</th>
+                </tr>
+              </thead>
+              <tbody id="orderbookTableBody">
+                <tr>
+                  <td class="orderbook-empty-row" colspan="11">Loading orderbook...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="filled-orderbooks-card">
+          <h2 class="filled-orderbooks-title">Active Order Books</h2>
+          <p class="filled-orderbooks-subtitle">Snapshots captured when the timer hits 15:30.</p>
+          <div class="filled-orderbooks-list" id="filledOrderbooksList">
+            <div class="filled-orderbook-empty">No active order books yet.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="orderbook-tab-panel" id="closedBooksPanel" role="tabpanel" aria-labelledby="closedBooksTab">
+        <div class="closed-books-card">
+          <h2 class="closed-books-title">Closed Books</h2>
+          <p class="closed-books-subtitle">Closed-book logic is not enabled yet.</p>
+          <div class="filled-orderbook-empty">No closed books yet.</div>
+        </div>
+      </div>
+
+      <div class="orderbook-tab-panel" id="strateBirPanel" role="tabpanel" aria-labelledby="strateBirTab">
+        <div class="closed-books-card">
+          <h2 class="closed-books-title">Strate BIR Export</h2>
+          <p class="closed-books-subtitle">Generates pipe-delimited H1, B1, B2, B3, and T1 records in Strate sequence.</p>
+          <div class="orderbook-toolbar">
+            <div class="orderbook-count" id="strateBirCount">0 records</div>
+            <div class="orderbook-toolbar-actions">
+              <select class="strate-bir-filter-select" id="strateBirTypeFilter" aria-label="Select Strate table view style">
+                <option value="simple">Simple view</option>
+                <option value="accurate">Accurate view</option>
+                <option value="individual">Individual view</option>
+              </select>
+              <button class="orderbook-export-btn" id="toggleStrateBirViewBtn" type="button">Table view</button>
+              <button class="orderbook-export-btn" id="exportStrateBirBtn" type="button" disabled>Generate TXT</button>
+            </div>
+          </div>
+          <div class="orderbook-table-wrap">
+            <table class="orderbook-table" style="min-width: 680px;">
+              <thead id="strateBirPreviewHead">
+                <tr>
+                  <th style="width: 92px;">Line</th>
+                  <th>Record</th>
+                </tr>
+              </thead>
+              <tbody id="strateBirPreviewBody">
+                <tr>
+                  <td class="orderbook-empty-row" colspan="2">No BIR records generated yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://mfxnghmuccevsxwcetej.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1meG5naG11Y2NldnN4d2NldGVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NTI1ODAsImV4cCI6MjA4NDQyODU4MH0.lktfglzBMaHd79hLFDRH1HHSwsEwZ56Tv6e287kQiFg';
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const orderbookTableBody = document.getElementById('orderbookTableBody');
+    const orderbookCount = document.getElementById('orderbookCount');
+    const exportOrderbookBtn = document.getElementById('exportOrderbookBtn');
+    const orderbookSearch = document.getElementById('orderbookSearch');
+    const orderbookTimer = document.getElementById('orderbookTimer');
+    const filledOrderbooksList = document.getElementById('filledOrderbooksList');
+    const orderbookTitle = document.getElementById('orderbookTitle');
+    const activeBooksTab = document.getElementById('activeBooksTab');
+    const strateBirTab = document.getElementById('strateBirTab');
+    const closedBooksTab = document.getElementById('closedBooksTab');
+    const activeBooksPanel = document.getElementById('activeBooksPanel');
+    const strateBirPanel = document.getElementById('strateBirPanel');
+    const closedBooksPanel = document.getElementById('closedBooksPanel');
+    const strateBirCount = document.getElementById('strateBirCount');
+    const exportStrateBirBtn = document.getElementById('exportStrateBirBtn');
+    const toggleStrateBirViewBtn = document.getElementById('toggleStrateBirViewBtn');
+    const strateBirTypeFilter = document.getElementById('strateBirTypeFilter');
+    const strateBirPreviewHead = document.getElementById('strateBirPreviewHead');
+    const strateBirPreviewBody = document.getElementById('strateBirPreviewBody');
+    let allOrderbookRows = [];
+    let allOrderbookRawRows = [];
+    let allBirSourceRows = [];
+    let strateBirPreviewMode = 'table';
+    let strateBirTableViewMode = 'simple';
+    let strateBirExpandedIndividualRef = '';
+    const strateBirCollapsedGroups = {
+      H1: false,
+      B1: false,
+      B2: false,
+      B3: false,
+      T1: false
+    };
+    let activeOrderbookSequence = 1;
+    let timerHighlightUntil = 0;
+    let isCapturingFilledOrderbook = false;
+    const FILLED_ARCHIVE_KEY = 'filled-orderbooks-archive-v1';
+    const ARCHIVE_BACKFILL_KEY = 'orderbook-archive-backfill-v2';
+    let filledOrderbooksArchive = [];
+
+    const requireSession = async () => {
+      const { data } = await supabaseClient.auth.getSession();
+      if (!data.session) {
+        window.location.href = '/signin.html';
+        return false;
+      }
+      return true;
+    };
+
+    const signOutBtn = document.getElementById('signOutBtn');
+    if (signOutBtn) {
+      signOutBtn.addEventListener('click', async () => {
+        await supabaseClient.auth.signOut();
+        window.location.href = '/signin.html';
+      });
+    }
+
+    const escapeHtml = (value) => String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+    const asDateTime = (value) => {
+      if (!value) return '-';
+      const dt = new Date(value);
+      if (Number.isNaN(dt.getTime())) return String(value);
+      return dt.toLocaleString();
+    };
+
+    const normalizeCsv = (value) => {
+      const base = String(value ?? '');
+      return `"${base.replace(/"/g, '""')}"`;
+    };
+
+    const asRandValue = (value) => {
+      const text = String(value ?? '').trim();
+      if (!text || text === '-') return '-';
+      if (/^R\s*/i.test(text)) return text;
+      return `R ${text}`;
+    };
+
+    const maskIdentifier = (value) => {
+      const text = String(value ?? '').replace(/\s+/g, '');
+      if (!text) return '-';
+      if (text.length <= 5) return `${text}xxxxx`;
+      return `${text.slice(0, text.length - 5)}xxxxx`;
+    };
+
+    const shortClientName = (fullName) => {
+      const text = String(fullName || '').trim();
+      if (!text) return 'Unknown Client';
+      const parts = text.split(/\s+/).filter(Boolean);
+      if (parts.length === 1) return parts[0];
+      return `${parts[0][0]}. ${parts.slice(1).join(' ')}`;
+    };
+
+    const deterministicNumberFromText = (text, mod = 1000000) => {
+      let hash = 0;
+      const source = String(text || '');
+      for (let i = 0; i < source.length; i += 1) {
+        hash = ((hash * 31) + source.charCodeAt(i)) % mod;
+      }
+      return Math.abs(hash);
+    };
+
+    const pickNestedValue = (source, paths = []) => {
+      for (const path of paths) {
+        const parts = String(path || '').split('.').filter(Boolean);
+        let current = source;
+        for (const part of parts) {
+          if (current === null || current === undefined) {
+            current = undefined;
+            break;
+          }
+          current = current[part];
+        }
+        if (current !== undefined && current !== null && String(current).trim() !== '') {
+          return current;
+        }
+      }
+      return null;
+    };
+
+    const normalizePackDetailsObject = (value) => {
+      if (!value) return null;
+      if (typeof value === 'object') return value;
+      if (typeof value === 'string') {
+        try {
+          return JSON.parse(value);
+        } catch {
+          return null;
+        }
+      }
+      return null;
+    };
+
+    const extractIdFromPackDetails = (packDetails) => {
+      const pack = normalizePackDetailsObject(packDetails);
+      if (!pack) return '';
+
+      const deepFindByKeyPattern = (source, keyPattern) => {
+        const candidates = [];
+
+        const walk = (node) => {
+          if (node === null || node === undefined) return;
+          if (Array.isArray(node)) {
+            node.forEach(walk);
+            return;
+          }
+          if (typeof node !== 'object') return;
+
+          Object.entries(node).forEach(([key, value]) => {
+            if (value === null || value === undefined) return;
+
+            if (keyPattern.test(String(key)) && (typeof value === 'string' || typeof value === 'number')) {
+              const normalized = String(value).trim();
+              if (normalized) {
+                candidates.push(normalized);
+              }
+            }
+
+            if (typeof value === 'object') {
+              walk(value);
+            }
+          });
+        };
+
+        walk(source);
+        return candidates;
+      };
+
+      const raw = pickNestedValue(pack, [
+        'info.idDocs.0.number',
+        'info.idDocs.0.idNumber',
+        'info.idNumber',
+        'info.id_number',
+        'fixedInfo.idDocs.0.number',
+        'fixedInfo.idDocs.0.idNumber',
+        'fixedInfo.idNumber',
+        'fixedInfo.id_number',
+        'idNumber',
+        'id_number',
+        'idDocs.0.number',
+        'idDocs.0.idNumber',
+        'idDoc.number',
+        'idDoc.idNumber',
+        'document.number',
+        'document.idNumber',
+        'documents.0.number',
+        'documents.0.idNumber',
+        'personalDetails.idNumber',
+        'personal_details.id_number',
+        'nationalId',
+        'national_id',
+        'regNumber',
+        'registrationNumber'
+      ]);
+
+      if (raw) {
+        return String(raw).trim();
+      }
+
+      const deepCandidates = deepFindByKeyPattern(pack, /(id.?number|identity.?number|national.?id|passport|reg(istration)?\s*number|document\s*number)/i)
+        .filter((value) => /[0-9]/.test(value));
+
+      if (deepCandidates.length) {
+        deepCandidates.sort((a, b) => b.length - a.length);
+        return String(deepCandidates[0]).trim();
+      }
+
+      return '';
+    };
+
+    const extractNameFromPackDetails = (packDetails) => {
+      const pack = normalizePackDetailsObject(packDetails);
+      if (!pack) return '';
+
+      const firstName = pickNestedValue(pack, [
+        'info.firstNameEn', 'info.firstName', 'info.first_name',
+        'fixedInfo.firstNameEn', 'fixedInfo.firstName', 'fixedInfo.first_name',
+        'firstName', 'first_name', 'personalDetails.firstName',
+        'personal_details.first_name'
+      ]);
+      const lastName = pickNestedValue(pack, [
+        'info.lastNameEn', 'info.lastName', 'info.last_name',
+        'fixedInfo.lastNameEn', 'fixedInfo.lastName', 'fixedInfo.last_name',
+        'lastName', 'last_name', 'personalDetails.lastName',
+        'personal_details.last_name'
+      ]);
+
+      return [firstName, lastName].filter(Boolean).map(v => String(v).trim()).filter(Boolean).join(' ');
+    };
+
+    const getBndSuffix = (orderbookSequence, lineNumber) => {
+      const seq = Number(orderbookSequence || 0);
+      const line = Number(lineNumber || 0);
+      const combined = (Math.max(seq, 0) * 100) + Math.max(line, 0);
+      return String(combined).padStart(3, '0');
+    };
+
+    const buildBndReference = ({ timestamp, orderbookSequence, lineNumber }) => {
+      return `BND-${formatDateCompact(timestamp)}-${getBndSuffix(orderbookSequence, lineNumber)}`;
+    };
+
+    const formatTimeOnly = (value) => {
+      if (!value) return '-';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '-';
+      return date.toLocaleTimeString([], { hour12: false });
+    };
+
+    const formatDateCompact = (value) => {
+      if (!value) return '00000000';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '00000000';
+      return `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+    };
+
+    const buildBndRowsForOrder = (targetRow) => {
+      if (Array.isArray(targetRow?.bndRows) && targetRow.bndRows.length) {
+        return targetRow.bndRows;
+      }
+
+      const related = allOrderbookRawRows
+        .filter((row) => String(row.securityId || '') === String(targetRow.securityId || '') && String(row.side || '').toUpperCase() === 'BUY')
+        .sort((a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime());
+
+      if (!related.length) {
+        return [];
+      }
+
+      return related.map((row, index) => {
+        const clientSeed = deterministicNumberFromText(row.userId || row.sourceId || row.clientName || `${index + 1}`);
+        const accountId = row.clientAccountId || `MINT-${String(clientSeed % 1000000).padStart(6, '0')}`;
+        const bndReference = row.bndReference || buildBndReference({
+          timestamp: row.timestamp,
+          orderbookSequence: row.orderbookSequence || targetRow.orderbookSequence || activeOrderbookSequence,
+          lineNumber: index + 1
+        });
+
+        return {
+          line: index + 1,
+          clientAccountId: accountId,
+          bndReference,
+          clientName: shortClientName(row.clientName),
+          idRegNoFull: String(row.clientIdRegNo || '-'),
+          quantity: row.totalQuantity || '-',
+          marketValue: asRandValue(row.marketValue || '-'),
+          orderTimestamp: formatTimeOnly(row.timestamp),
+          instructionType: row.orderType || 'Market',
+          settlementRef: row.settlementRef || ''
+        };
+      });
+    };
+
+    const renderBndDetailsTable = (row) => {
+      const bndRows = buildBndRowsForOrder(row);
+      if (!bndRows.length) {
+        return '<div class="filled-orderbook-empty">No BND buyer rows for this entry.</div>';
+      }
+
+      const body = bndRows.map((detailRow) => `
+        <tr>
+          <td>${escapeHtml(String(detailRow.line))}</td>
+          <td>${escapeHtml(detailRow.clientAccountId)}</td>
+          <td>${escapeHtml(detailRow.bndReference)}</td>
+          <td>${escapeHtml(detailRow.clientName)}</td>
+          <td>${escapeHtml(maskIdentifier(detailRow.idRegNoFull || detailRow.idRegNo || '-'))}</td>
+          <td>${escapeHtml(String(detailRow.quantity))}</td>
+          <td>${escapeHtml(asRandValue(detailRow.marketValue || '-'))}</td>
+          <td>${escapeHtml(detailRow.orderTimestamp)}</td>
+          <td>${escapeHtml(detailRow.instructionType)}</td>
+          <td>${escapeHtml(detailRow.settlementRef || '')}</td>
+        </tr>
+      `).join('');
+
+      return `
+        <div class="orderbook-detail-table-wrap">
+          <table class="orderbook-detail-table">
+            <thead>
+              <tr>
+                <th>Line</th>
+                <th>Client Account ID</th>
+                <th>BND Reference</th>
+                <th>Client Name</th>
+                <th>ID / Reg No</th>
+                <th>Quantity</th>
+                <th>Market Value</th>
+                <th>Order Timestamp</th>
+                <th>Instruction Type</th>
+                <th>Settlement Ref</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${body}
+            </tbody>
+          </table>
+        </div>
+      `;
+    };
+
+    const renderSnapshotBndDetailsTable = (snapshotRows, targetRow, parentSequence = null) => {
+      if (Array.isArray(targetRow?.bndRows) && targetRow.bndRows.length) {
+        const body = targetRow.bndRows.map((row) => `
+          <tr>
+            <td>${escapeHtml(String(row.line ?? '-'))}</td>
+            <td>${escapeHtml(row.clientAccountId || '-')}</td>
+            <td>${escapeHtml(row.bndReference || '-')}</td>
+            <td>${escapeHtml(row.clientName || '-')}</td>
+            <td>${escapeHtml(maskIdentifier(row.idRegNoFull || row.idRegNo || '-'))}</td>
+            <td>${escapeHtml(String(row.quantity ?? '-'))}</td>
+            <td>${escapeHtml(asRandValue(row.marketValue || '-'))}</td>
+            <td>${escapeHtml(row.orderTimestamp || '-')}</td>
+            <td>${escapeHtml(row.instructionType || 'Market')}</td>
+            <td>${escapeHtml(row.settlementRef || '')}</td>
+          </tr>
+        `).join('');
+
+        return `
+          <div class="orderbook-detail-table-wrap">
+            <table class="orderbook-detail-table">
+              <thead>
+                <tr>
+                  <th>Line</th>
+                  <th>Client Account ID</th>
+                  <th>BND Reference</th>
+                  <th>Client Name</th>
+                  <th>ID / Reg No</th>
+                  <th>Quantity</th>
+                  <th>Market Value</th>
+                  <th>Order Timestamp</th>
+                  <th>Instruction Type</th>
+                  <th>Settlement Ref</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${body}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      const rows = Array.isArray(snapshotRows) ? snapshotRows : [];
+      const targetSecurityId = String(targetRow?.securityId || '').trim();
+      const targetInstrument = String(targetRow?.instrumentName || '').trim().toLowerCase();
+      const targetTicker = String(targetRow?.ticker || '').trim().toLowerCase();
+      const related = rows
+        .filter((row) => {
+          if (String(row?.side || '').toUpperCase() !== 'BUY') return false;
+
+          const rowSecurityId = String(row?.securityId || '').trim();
+          if (targetSecurityId && rowSecurityId) {
+            return rowSecurityId === targetSecurityId;
+          }
+
+          const rowInstrument = String(row?.instrumentName || '').trim().toLowerCase();
+          const rowTicker = String(row?.ticker || '').trim().toLowerCase();
+          return rowInstrument === targetInstrument
+            && rowTicker === targetTicker;
+        })
+        .sort((a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime());
+
+      if (!related.length) {
+        return '<div class="filled-orderbook-empty">No BND buyer rows for this entry.</div>';
+      }
+
+      const body = related.map((row, index) => {
+        const seed = deterministicNumberFromText(row.userId || row.sourceId || row.clientName || `${index + 1}`);
+        const accountId = row.clientAccountId || `MINT-${String(seed % 1000000).padStart(6, '0')}`;
+        const bndReference = row.bndReference || buildBndReference({
+          timestamp: row.timestamp,
+          orderbookSequence: row.orderbookSequence || targetRow.orderbookSequence || parentSequence || activeOrderbookSequence,
+          lineNumber: index + 1
+        });
+
+        return `
+          <tr>
+            <td>${escapeHtml(String(index + 1))}</td>
+            <td>${escapeHtml(accountId)}</td>
+            <td>${escapeHtml(bndReference)}</td>
+            <td>${escapeHtml(shortClientName(row.clientName))}</td>
+            <td>${escapeHtml(maskIdentifier(row.clientIdRegNo || '-'))}</td>
+            <td>${escapeHtml(String(row.totalQuantity ?? '-'))}</td>
+            <td>${escapeHtml(asRandValue(row.marketValue || '-'))}</td>
+            <td>${escapeHtml(formatTimeOnly(row.timestamp))}</td>
+            <td>${escapeHtml(row.orderType || 'Market')}</td>
+            <td>${escapeHtml(row.settlementRef || '')}</td>
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <div class="orderbook-detail-table-wrap">
+          <table class="orderbook-detail-table">
+            <thead>
+              <tr>
+                <th>Line</th>
+                <th>Client Account ID</th>
+                <th>BND Reference</th>
+                <th>Client Name</th>
+                <th>ID / Reg No</th>
+                <th>Quantity</th>
+                <th>Market Value</th>
+                <th>Order Timestamp</th>
+                <th>Instruction Type</th>
+                <th>Settlement Ref</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${body}
+            </tbody>
+          </table>
+        </div>
+      `;
+    };
+
+    const groupByStrategy = (aggregatedRows, rawRows) => {
+      const nonStrategyRows = [];
+      const strategyBuckets = new Map();
+
+      (aggregatedRows || []).forEach((row) => {
+        const sid = row.strategyId || null;
+        if (!sid) {
+          nonStrategyRows.push(row);
+          return;
+        }
+        if (!strategyBuckets.has(sid)) strategyBuckets.set(sid, []);
+        strategyBuckets.get(sid).push(row);
+      });
+
+      const strategyParentRows = Array.from(strategyBuckets.entries()).map(([strategyId, holdings]) => {
+        const first = holdings[0];
+        const totalMV = holdings.reduce((s, h) => s + (h.marketValueNumber || 0), 0);
+        const totalQty = holdings.reduce((s, h) => s + (h.quantityValue || 0), 0);
+        const totalPnl = holdings.reduce((s, h) => s + (h.unrealizedPnlNumber || 0), 0);
+        let wSum = 0, wTot = 0;
+        holdings.forEach((h) => {
+          if (h.avgFillNumber != null && Number.isFinite(h.avgFillNumber)) {
+            const w = Math.abs(h.quantityValue) || 1;
+            wSum += h.avgFillNumber * w;
+            wTot += w;
+          }
+        });
+        const latestTs = holdings.reduce((l, h) => {
+          const t = new Date(h.timestamp || 0).getTime();
+          return t > l ? t : l;
+        }, 0);
+
+        const userMap = new Map();
+        (rawRows || []).filter((r) => r.strategyId === strategyId).forEach((r) => {
+          if (!r.userId) return;
+          if (!userMap.has(r.userId)) {
+            userMap.set(r.userId, {
+              userId: r.userId, clientName: r.clientName,
+              clientAccountId: r.clientAccountId, clientIdRegNo: r.clientIdRegNo,
+              totalMarketValue: 0, holdingsCount: 0
+            });
+          }
+          const u = userMap.get(r.userId);
+          u.totalMarketValue += r.marketValueNumber || 0;
+          u.holdingsCount += 1;
+        });
+
+        return {
+          isStrategy: true,
+          strategyId,
+          strategyName: first.strategyName || 'Unknown Strategy',
+          strategyShortName: first.strategyShortName || '',
+          strategySlug: first.strategySlug || '',
+          strategyHoldings: holdings.map((h, i) => ({ ...h, line: i + 1 })),
+          strategyUsers: Array.from(userMap.values()),
+          securityId: '',
+          instrumentName: first.strategyName || 'Unknown Strategy',
+          ticker: first.strategyShortName || first.strategySlug || '-',
+          isin: '-',
+          side: totalQty < 0 ? 'SELL' : 'BUY',
+          quantityValue: totalQty,
+          totalQuantity: totalQty.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 6 }),
+          avgFillNumber: wTot > 0 ? (wSum / wTot) : null,
+          avgFill: wTot > 0
+            ? `R ${(wSum / wTot).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : '-',
+          marketValueNumber: totalMV,
+          marketValue: `R ${totalMV.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          unrealizedPnlNumber: totalPnl,
+          unrealizedPnl: totalPnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+          orderType: 'Market',
+          settlementAccount: first.settlementAccount || '',
+          settlementAccountOptions: first.settlementAccountOptions || [],
+          brokerRef: first.brokerRef || '',
+          brokerRefOptions: first.brokerRefOptions || [],
+          timestamp: latestTs ? new Date(latestTs).toISOString() : null,
+          sourceIds: holdings.flatMap((h) => h.sourceIds || []),
+          sourceId: first.sourceId || '',
+          bndRows: []
+        };
+      });
+
+      return [...nonStrategyRows, ...strategyParentRows]
+        .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
+        .map((row, i) => ({ ...row, line: i + 1 }));
+    };
+
+    const renderStrategyDetailsTable = (row) => {
+      const holdings = row.strategyHoldings || [];
+      const users = row.strategyUsers || [];
+
+      let holdingsHtml;
+      if (holdings.length) {
+        const hBody = holdings.map((h) => `
+          <tr>
+            <td>${escapeHtml(String(h.line))}</td>
+            <td>${escapeHtml(h.instrumentName || '-')}</td>
+            <td class="orderbook-cell-muted">${escapeHtml(h.ticker || '-')}</td>
+            <td>${escapeHtml(h.side || '-')}</td>
+            <td>${escapeHtml(String(h.totalQuantity ?? '-'))}</td>
+            <td>${escapeHtml(asRandValue(h.avgFill))}</td>
+            <td>${escapeHtml(asRandValue(h.marketValue))}</td>
+            <td>${escapeHtml(String(h.unrealizedPnl ?? '-'))}</td>
+          </tr>
+        `).join('');
+
+        holdingsHtml = `
+          <div class="orderbook-detail-title">Holdings under ${escapeHtml(row.strategyName || 'Strategy')}</div>
+          <div class="orderbook-detail-table-wrap">
+            <table class="orderbook-detail-table">
+              <thead>
+                <tr>
+                  <th>Line</th>
+                  <th>Instrument Name</th>
+                  <th>Ticker</th>
+                  <th>Side</th>
+                  <th>Total QYT</th>
+                  <th>Avg Fill</th>
+                  <th>Market Value</th>
+                  <th>Unrealized PnL</th>
+                </tr>
+              </thead>
+              <tbody>${hBody}</tbody>
+            </table>
+          </div>
+        `;
+      } else {
+        holdingsHtml = '<div class="filled-orderbook-empty">No holdings found for this strategy.</div>';
+      }
+
+      let usersHtml = '';
+      if (users.length) {
+        const uBody = users.map((u, i) => `
+          <tr>
+            <td>${escapeHtml(String(i + 1))}</td>
+            <td>${escapeHtml(u.clientName || '-')}</td>
+            <td>${escapeHtml(u.clientAccountId || '-')}</td>
+            <td>${escapeHtml(maskIdentifier(u.clientIdRegNo || '-'))}</td>
+            <td>${escapeHtml(formatMoney(u.totalMarketValue))}</td>
+            <td>${escapeHtml(String(u.holdingsCount))}</td>
+          </tr>
+        `).join('');
+
+        usersHtml = `
+          <div class="orderbook-detail-title" style="margin-top: 16px;">Investors in ${escapeHtml(row.strategyName || 'Strategy')}</div>
+          <div class="orderbook-detail-table-wrap">
+            <table class="orderbook-detail-table">
+              <thead>
+                <tr>
+                  <th>Line</th>
+                  <th>Client Name</th>
+                  <th>Account ID</th>
+                  <th>ID / Reg No</th>
+                  <th>Market Value</th>
+                  <th>Holdings</th>
+                </tr>
+              </thead>
+              <tbody>${uBody}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      return holdingsHtml + usersHtml;
+    };
+
+    const aggregateOrderbookRows = (rows) => {
+      const groups = new Map();
+
+      (rows || []).forEach((row) => {
+        const key = [
+          String(row.securityId || row.instrumentName || ''),
+          String(row.side || '').toUpperCase(),
+          String(row.orderType || '').toUpperCase(),
+          String(row.strategyId || '')
+        ].join('|');
+
+        if (!groups.has(key)) {
+          const initialAvgFillNumber = (row.avgFillNumber != null) ? Number(row.avgFillNumber) : NaN;
+          const initialQtyWeight = Math.abs(Number(row.quantityValue || 0));
+          const hasInitialAvgFill = Number.isFinite(initialAvgFillNumber);
+          groups.set(key, {
+            ...row,
+            quantityValue: Number(row.quantityValue || 0),
+            marketValueNumber: Number(row.marketValueNumber || 0),
+            unrealizedPnlNumber: Number(row.unrealizedPnlNumber || 0),
+            avgFillWeightedSum: hasInitialAvgFill ? initialAvgFillNumber * (initialQtyWeight > 0 ? initialQtyWeight : 1) : 0,
+            avgFillWeight: hasInitialAvgFill ? (initialQtyWeight > 0 ? initialQtyWeight : 1) : 0,
+            sourceIds: row.sourceId ? [String(row.sourceId)] : [],
+            bndRows: []
+          });
+          return;
+        }
+
+        const group = groups.get(key);
+        group.quantityValue += Number(row.quantityValue || 0);
+        group.marketValueNumber += Number(row.marketValueNumber || 0);
+        group.unrealizedPnlNumber += Number(row.unrealizedPnlNumber || 0);
+        const rowAvgFillNumber = (row.avgFillNumber != null) ? Number(row.avgFillNumber) : NaN;
+        if (Number.isFinite(rowAvgFillNumber)) {
+          const rowQtyWeight = Math.abs(Number(row.quantityValue || 0));
+          const weight = rowQtyWeight > 0 ? rowQtyWeight : 1;
+          group.avgFillWeightedSum += rowAvgFillNumber * weight;
+          group.avgFillWeight += weight;
+        }
+        if (row.sourceId) {
+          group.sourceIds.push(String(row.sourceId));
+        }
+
+        const groupTs = new Date(group.timestamp || 0).getTime();
+        const rowTs = new Date(row.timestamp || 0).getTime();
+        if (rowTs > groupTs) {
+          group.timestamp = row.timestamp;
+        }
+      });
+
+      const aggregated = Array.from(groups.values()).map((group) => {
+        const normalizedSourceIds = [...new Set(group.sourceIds || [])];
+        const relatedRawRows = (rows || [])
+          .filter((rawRow) => {
+            return String(rawRow.securityId || '') === String(group.securityId || '')
+              && String(rawRow.side || '').toUpperCase() === String(group.side || '').toUpperCase()
+              && String(rawRow.orderType || '').toUpperCase() === String(group.orderType || '').toUpperCase();
+          })
+          .sort((a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime());
+
+        const bndRows = relatedRawRows.map((item, index) => {
+          const seed = deterministicNumberFromText(item.userId || item.sourceId || item.clientName || `${index + 1}`);
+          return {
+            line: index + 1,
+            clientAccountId: item.clientAccountId || `MINT-${String(seed % 1000000).padStart(6, '0')}`,
+            bndReference: item.bndReference || buildBndReference({
+              timestamp: item.timestamp,
+              orderbookSequence: item.orderbookSequence || group.orderbookSequence || activeOrderbookSequence,
+              lineNumber: index + 1
+            }),
+            clientName: shortClientName(item.clientName),
+            idRegNoFull: String(item.clientIdRegNo || '-'),
+            quantity: item.totalQuantity || '-',
+            marketValue: asRandValue(item.marketValue || '-'),
+            orderTimestamp: formatTimeOnly(item.timestamp),
+            instructionType: item.orderType || 'Market',
+            settlementRef: item.settlementRef || ''
+          };
+        });
+
+        return {
+          ...group,
+          sourceId: normalizedSourceIds[0] || '',
+          sourceIds: normalizedSourceIds,
+          totalQuantity: group.quantityValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 6 }),
+          avgFillNumber: group.avgFillWeight > 0 ? (group.avgFillWeightedSum / group.avgFillWeight) : null,
+          avgFill: group.avgFillWeight > 0
+            ? `R ${(group.avgFillWeightedSum / group.avgFillWeight).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : '-',
+          marketValue: `R ${group.marketValueNumber.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          unrealizedPnl: group.unrealizedPnlNumber.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+          bndRows
+        };
+      });
+
+      return aggregated
+        .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
+        .map((row, index) => ({
+          ...row,
+          line: index + 1
+        }));
+    };
+
+    const toCsvContent = (rows) => {
+      const header = ['Line', 'Instrument Name', 'Ticker', 'Side', 'Total QYT', 'Avg Fill', 'Market Value', 'Order Type', 'Settlement Account', 'Broker Ref', 'Unrealized PnL'];
+      const csvLines = [header.map(normalizeCsv).join(',')];
+
+      const flatRows = [];
+      (rows || []).forEach((row) => {
+        if (row.isStrategy && Array.isArray(row.strategyHoldings) && row.strategyHoldings.length) {
+          row.strategyHoldings.forEach((h) => flatRows.push(h));
+        } else {
+          flatRows.push(row);
+        }
+      });
+
+      flatRows.forEach((row, index) => {
+        csvLines.push([
+          index + 1,
+          row.instrumentName,
+          row.ticker,
+          row.side,
+          row.totalQuantity,
+          asRandValue(row.avgFill),
+          asRandValue(row.marketValue),
+          row.orderType,
+          row.settlementAccount,
+          row.brokerRef,
+          row.unrealizedPnl
+        ].map(normalizeCsv).join(','));
+      });
+
+      return csvLines.join('\n');
+    };
+
+    const downloadCsv = (rows) => {
+      const blob = new Blob([toCsvContent(rows)], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `orderbook-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    };
+
+    const sanitizePipeField = (value) => String(value ?? '')
+      .replace(/[\r\n]+/g, ' ')
+      .replace(/\|/g, ' ')
+      .trim();
+
+    const formatDateOnlyCompact = (value) => {
+      const date = value instanceof Date ? value : new Date(value);
+      if (Number.isNaN(date.getTime())) return formatDateCompact(new Date());
+      return `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+    };
+
+    const formatTimeCompact = (value) => {
+      const date = value instanceof Date ? value : new Date(value);
+      if (Number.isNaN(date.getTime())) return '000000';
+      return `${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}${String(date.getSeconds()).padStart(2, '0')}`;
+    };
+
+    const normalizeNumericPlain = (value, maxFractionDigits = 6) => {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return '0';
+      return numeric.toLocaleString('en-US', {
+        useGrouping: false,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: maxFractionDigits
+      });
+    };
+
+    const extractAddressFromPackDetails = (packDetails) => {
+      const pack = normalizePackDetailsObject(packDetails);
+      if (!pack) {
+        return {
+          line1: '',
+          line2: '',
+          city: '',
+          postalCode: '',
+          country: ''
+        };
+      }
+
+      const line1 = pickNestedValue(pack, [
+        'info.addresses.0.streetEn',
+        'info.addresses.0.street',
+        'info.idDocs.1.address.streetEn',
+        'info.idDocs.1.address.street',
+        'address.street',
+        'address.line1',
+        'addresses.0.streetEn',
+        'addresses.0.street',
+        'addresses.0.addressLine',
+        'fixedInfo.residentialAddress',
+        'fixedInfo.address',
+        'info.address',
+        'info.residentialAddress'
+      ]);
+
+      const line2 = pickNestedValue(pack, [
+        'info.addresses.0.subStreet',
+        'info.addresses.0.town',
+        'address.suburb',
+        'address.line2',
+        'addresses.0.suburb',
+        'addresses.0.cityDistrict'
+      ]);
+
+      const city = pickNestedValue(pack, [
+        'info.addresses.0.town',
+        'info.addresses.0.city',
+        'info.idDocs.1.address.town',
+        'info.idDocs.1.address.city',
+        'address.city',
+        'addresses.0.city',
+        'addresses.0.town'
+      ]);
+
+      const postalCode = pickNestedValue(pack, [
+        'info.addresses.0.postCode',
+        'info.addresses.0.postalCode',
+        'info.idDocs.1.address.postCode',
+        'info.idDocs.1.address.postalCode',
+        'address.postCode',
+        'address.postalCode',
+        'addresses.0.postCode',
+        'addresses.0.postalCode'
+      ]);
+
+      const country = pickNestedValue(pack, [
+        'country',
+        'info.country',
+        'fixedInfo.country',
+        'address.country',
+        'addresses.0.country'
+      ]);
+
+      return {
+        line1: sanitizePipeField(line1 || ''),
+        line2: sanitizePipeField(line2 || ''),
+        city: sanitizePipeField(city || ''),
+        postalCode: sanitizePipeField(postalCode || ''),
+        country: sanitizePipeField(country || '')
+      };
+    };
+
+    const parseAddressText = (addressText) => {
+      const text = sanitizePipeField(addressText || '');
+      if (!text) {
+        return {
+          line1: '',
+          line2: '',
+          city: '',
+          postalCode: ''
+        };
+      }
+
+      const parts = text.split(',').map((part) => part.trim()).filter(Boolean);
+      const postalFromText = text.match(/\b\d{4}\b/);
+      return {
+        line1: parts[0] || text,
+        line2: parts[1] || '',
+        city: parts[2] || '',
+        postalCode: postalFromText ? postalFromText[0] : ''
+      };
+    };
+
+    const toIso3Country = (value) => {
+      const text = sanitizePipeField(value || '').toUpperCase();
+      if (!text) return 'ZAF';
+      if (text === 'ZAF' || text === 'ZA' || text === 'SOUTH AFRICA') return 'ZAF';
+      if (/^[A-Z]{3}$/.test(text)) return text;
+      return 'ZAF';
+    };
+
+    const inferOwnerClassification = (name, idNumber) => {
+      const normalizedName = sanitizePipeField(name || '').toUpperCase();
+      const normalizedId = sanitizePipeField(idNumber || '').toUpperCase();
+      const isCorpByName = /(PTY|LTD|LIMITED|INC|LLC|CORP|COMPANY)/.test(normalizedName);
+      const isCorpById = /\//.test(normalizedId);
+      const numericOnly = normalizedId.replace(/\D+/g, '');
+      const looksLikeSaid = numericOnly.length === 13;
+
+      if (isCorpByName || isCorpById || !looksLikeSaid) {
+        return { ownerType: 'CORP', idType: 'REG' };
+      }
+      return { ownerType: 'IND', idType: 'SAID' };
+    };
+
+    const downloadTextFile = (fileName, content) => {
+      const blob = new Blob([String(content || '')], { type: 'text/plain;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    };
+
+    const buildStrateBirPayload = () => {
+      const participantCode = 'MNT01';
+      const now = new Date();
+      const fileDate = formatDateOnlyCompact(now);
+      const fileTime = formatTimeCompact(now);
+      const fileReference = `MINTBIR${fileDate}${fileTime}`;
+
+      const activeRows = (allBirSourceRows || []).filter((row) => {
+        const quantity = Number(row?.quantityValue);
+        const status = String(row?.holdingStatus || '').trim().toLowerCase();
+        const isInactiveStatus = status.includes('exit') || status.includes('close');
+        return Number.isFinite(quantity) && quantity > 0 && !isInactiveStatus;
+      });
+
+      const grouped = new Map();
+      activeRows.forEach((row) => {
+        const key = String(row?.userId || row?.clientAccountId || row?.clientName || row?.sourceId || '').trim();
+        if (!key) return;
+        if (!grouped.has(key)) {
+          grouped.set(key, []);
+        }
+        grouped.get(key).push(row);
+      });
+
+      const lines = [];
+      lines.push(`H1|${participantCode}|${fileDate}|${fileTime}|${fileReference}`);
+
+      let settlementCounter = 1;
+      let clientCounter = 1;
+      const sortedClientKeys = Array.from(grouped.keys()).sort((a, b) => a.localeCompare(b));
+
+      sortedClientKeys.forEach((key) => {
+        const holdings = grouped.get(key) || [];
+        if (!holdings.length) return;
+
+        const first = holdings[0];
+        const ownerRef = `BO${String(clientCounter).padStart(4, '0')}`;
+        const participantAccount = sanitizePipeField(first.clientAccountId || first.userId || `ACCT${String(clientCounter).padStart(5, '0')}`);
+        const ownerName = sanitizePipeField(first.clientName || 'Unknown Client') || 'Unknown Client';
+        const idNumber = sanitizePipeField(first.clientIdRegNo || '-') || '-';
+        const classification = inferOwnerClassification(ownerName, idNumber);
+
+        lines.push([
+          'B1',
+          participantAccount,
+          ownerRef,
+          classification.ownerType,
+          ownerName,
+          classification.idType,
+          idNumber,
+          'ZAF'
+        ].join('|'));
+
+        const packAddress = extractAddressFromPackDetails(first.packDetails);
+        const parsedAddress = parseAddressText(first.profileAddress || '');
+        const addressLine1 = sanitizePipeField(packAddress.line1 || parsedAddress.line1 || first.profileAddress || '-') || '-';
+        const addressLine2 = sanitizePipeField(packAddress.line2 || parsedAddress.line2 || '-') || '-';
+        const city = sanitizePipeField(packAddress.city || parsedAddress.city || 'Johannesburg') || 'Johannesburg';
+        const postalCode = sanitizePipeField(packAddress.postalCode || parsedAddress.postalCode || '0001') || '0001';
+        const countryCode = toIso3Country(packAddress.country || first.countryCode || 'ZAF');
+
+        lines.push([
+          'B2',
+          ownerRef,
+          'P',
+          addressLine1,
+          addressLine2,
+          city,
+          postalCode,
+          countryCode
+        ].join('|'));
+
+        const sortedHoldings = holdings
+          .slice()
+          .sort((a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime());
+
+        sortedHoldings.forEach((holding) => {
+          const quantityNumber = Math.abs(Number(holding.quantityValue || 0));
+          const marketValueNumber = Number(holding.marketValueNumber || 0);
+          const recordDate = formatDateOnlyCompact(holding.timestamp || now);
+          const balanceType = classification.ownerType === 'CORP' ? 'M' : 'C';
+          const settlementRef = sanitizePipeField(holding.settlementRef || `SETT${String(settlementCounter).padStart(4, '0')}`);
+
+          lines.push([
+            'B3',
+            ownerRef,
+            sanitizePipeField(holding.isin || '-') || '-',
+            sanitizePipeField(holding.instrumentName || '-') || '-',
+            participantAccount,
+            normalizeNumericPlain(quantityNumber, 6),
+            balanceType,
+            normalizeNumericPlain(marketValueNumber, 2),
+            recordDate,
+            settlementRef
+          ].join('|'));
+
+          settlementCounter += 1;
+        });
+
+        clientCounter += 1;
+      });
+
+      lines.push(`T1|${lines.length}`);
+      return {
+        lines,
+        fileName: `MINT_STRATE_BIR_${fileDate}.txt`,
+        totalRecords: lines.length,
+        clientCount: Math.max(clientCounter - 1, 0),
+        holdingCount: Math.max(settlementCounter - 1, 0)
+      };
+    };
+
+    const getStrateBirTableHeaders = () => {
+      return [
+        'Line',
+        'Record Type',
+        'Participant Code',
+        'File Creation Date',
+        'File Creation Time',
+        'File Reference',
+        'Participant Account',
+        'Beneficial Owner Ref',
+        'Owner Type',
+        'Beneficial Owner Name',
+        'ID Type',
+        'ID Number',
+        'Address Type',
+        'Address Line 1',
+        'Address Line 2',
+        'City',
+        'Postal Code',
+        'Country',
+        'ISIN',
+        'Security Description',
+        'Quantity',
+        'Balance Type',
+        'Market Value',
+        'Record Date',
+        'Settlement Ref',
+        'Trailer Total Records'
+      ];
+    };
+
+    const parseStrateBirLine = (line, lineNumber) => {
+      const parts = String(line || '').split('|');
+      const recordType = sanitizePipeField(parts[0] || '');
+      const parsed = {
+        lineNumber,
+        recordType,
+        participantCode: '',
+        fileCreationDate: '',
+        fileCreationTime: '',
+        fileReference: '',
+        participantAccount: '',
+        beneficialOwnerRef: '',
+        ownerType: '',
+        beneficialOwnerName: '',
+        idType: '',
+        idNumber: '',
+        addressType: '',
+        addressLine1: '',
+        addressLine2: '',
+        city: '',
+        postalCode: '',
+        country: '',
+        isin: '',
+        securityDescription: '',
+        quantity: '',
+        balanceType: '',
+        marketValue: '',
+        recordDate: '',
+        settlementRef: '',
+        trailerTotalRecords: ''
+      };
+
+      if (recordType === 'H1') {
+        parsed.participantCode = sanitizePipeField(parts[1] || '');
+        parsed.fileCreationDate = sanitizePipeField(parts[2] || '');
+        parsed.fileCreationTime = sanitizePipeField(parts[3] || '');
+        parsed.fileReference = sanitizePipeField(parts[4] || '');
+      } else if (recordType === 'B1') {
+        parsed.participantAccount = sanitizePipeField(parts[1] || '');
+        parsed.beneficialOwnerRef = sanitizePipeField(parts[2] || '');
+        parsed.ownerType = sanitizePipeField(parts[3] || '');
+        parsed.beneficialOwnerName = sanitizePipeField(parts[4] || '');
+        parsed.idType = sanitizePipeField(parts[5] || '');
+        parsed.idNumber = sanitizePipeField(parts[6] || '');
+        parsed.country = sanitizePipeField(parts[7] || '');
+      } else if (recordType === 'B2') {
+        parsed.beneficialOwnerRef = sanitizePipeField(parts[1] || '');
+        parsed.addressType = sanitizePipeField(parts[2] || '');
+        parsed.addressLine1 = sanitizePipeField(parts[3] || '');
+        parsed.addressLine2 = sanitizePipeField(parts[4] || '');
+        parsed.city = sanitizePipeField(parts[5] || '');
+        parsed.postalCode = sanitizePipeField(parts[6] || '');
+        parsed.country = sanitizePipeField(parts[7] || '');
+      } else if (recordType === 'B3') {
+        parsed.beneficialOwnerRef = sanitizePipeField(parts[1] || '');
+        parsed.isin = sanitizePipeField(parts[2] || '');
+        parsed.securityDescription = sanitizePipeField(parts[3] || '');
+        parsed.participantAccount = sanitizePipeField(parts[4] || '');
+        parsed.quantity = sanitizePipeField(parts[5] || '');
+        parsed.balanceType = sanitizePipeField(parts[6] || '');
+        parsed.marketValue = sanitizePipeField(parts[7] || '');
+        parsed.recordDate = sanitizePipeField(parts[8] || '');
+        parsed.settlementRef = sanitizePipeField(parts[9] || '');
+      } else if (recordType === 'T1') {
+        parsed.trailerTotalRecords = sanitizePipeField(parts[1] || '');
+      }
+
+      return parsed;
+    };
+
+    const renderStrateBirRawPreview = (lines) => {
+      if (!strateBirPreviewBody || !strateBirPreviewHead) return;
+
+      strateBirPreviewHead.innerHTML = `
+        <tr>
+          <th style="width: 92px;">Line</th>
+          <th>Record</th>
+        </tr>
+      `;
+
+      strateBirPreviewBody.innerHTML = lines.map((line, index) => {
+        return `
+          <tr>
+            <td>${escapeHtml(String(index + 1))}</td>
+            <td style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; white-space: nowrap;">${escapeHtml(line)}</td>
+          </tr>
+        `;
+      }).join('');
+    };
+
+    const renderStrateBirTablePreviewAccurate = (lines) => {
+      if (!strateBirPreviewBody || !strateBirPreviewHead) return;
+
+      const headers = getStrateBirTableHeaders();
+      strateBirPreviewHead.innerHTML = `<tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr>`;
+
+      const rows = lines.map((line, index) => parseStrateBirLine(line, index + 1));
+      strateBirPreviewBody.innerHTML = rows.map((row) => {
+        return `
+          <tr>
+            <td>${escapeHtml(String(row.lineNumber))}</td>
+            <td>${escapeHtml(row.recordType)}</td>
+            <td>${escapeHtml(row.participantCode)}</td>
+            <td>${escapeHtml(row.fileCreationDate)}</td>
+            <td>${escapeHtml(row.fileCreationTime)}</td>
+            <td>${escapeHtml(row.fileReference)}</td>
+            <td>${escapeHtml(row.participantAccount)}</td>
+            <td>${escapeHtml(row.beneficialOwnerRef)}</td>
+            <td>${escapeHtml(row.ownerType)}</td>
+            <td>${escapeHtml(row.beneficialOwnerName)}</td>
+            <td>${escapeHtml(row.idType)}</td>
+            <td>${escapeHtml(row.idNumber)}</td>
+            <td>${escapeHtml(row.addressType)}</td>
+            <td>${escapeHtml(row.addressLine1)}</td>
+            <td>${escapeHtml(row.addressLine2)}</td>
+            <td>${escapeHtml(row.city)}</td>
+            <td>${escapeHtml(row.postalCode)}</td>
+            <td>${escapeHtml(row.country)}</td>
+            <td>${escapeHtml(row.isin)}</td>
+            <td>${escapeHtml(row.securityDescription)}</td>
+            <td>${escapeHtml(row.quantity)}</td>
+            <td>${escapeHtml(row.balanceType)}</td>
+            <td>${escapeHtml(row.marketValue)}</td>
+            <td>${escapeHtml(row.recordDate)}</td>
+            <td>${escapeHtml(row.settlementRef)}</td>
+            <td>${escapeHtml(row.trailerTotalRecords)}</td>
+          </tr>
+        `;
+      }).join('');
+    };
+
+    const renderStrateBirTablePreviewSimple = (lines) => {
+      if (!strateBirPreviewBody || !strateBirPreviewHead) return;
+
+      const headers = getStrateBirTableHeaders();
+      strateBirPreviewHead.innerHTML = `<tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr>`;
+
+      const rows = lines.map((line, index) => parseStrateBirLine(line, index + 1));
+
+      const recordTypeOrder = ['H1', 'B1', 'B2', 'B3', 'T1'];
+      const recordTypeLabels = {
+        H1: 'File Header',
+        B1: 'Beneficial Owner Identity',
+        B2: 'Beneficial Owner Address',
+        B3: 'Security Holding',
+        T1: 'File Trailer'
+      };
+
+      const grouped = rows.reduce((acc, row) => {
+        const key = String(row.recordType || '').toUpperCase();
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(row);
+        return acc;
+      }, {});
+
+      const rowsHtml = [];
+      recordTypeOrder.forEach((recordType) => {
+        const typeRows = grouped[recordType] || [];
+        if (!typeRows.length) return;
+
+        const isCollapsed = Boolean(strateBirCollapsedGroups[recordType]);
+        rowsHtml.push(`
+          <tr class="strate-bir-group-row" data-strate-group-toggle data-record-type="${escapeHtml(recordType)}">
+            <td colspan="${headers.length}">
+              <span class="strate-bir-group-toggle">
+                <span class="strate-bir-group-caret">${isCollapsed ? '▸' : '▾'}</span>
+                <span>${escapeHtml(recordType)} - ${escapeHtml(recordTypeLabels[recordType] || 'Records')}</span>
+                <span class="strate-bir-group-count">(${escapeHtml(String(typeRows.length))} entries)</span>
+              </span>
+            </td>
+          </tr>
+        `);
+
+        typeRows.forEach((row) => {
+          rowsHtml.push(`
+            <tr class="strate-bir-group-member${isCollapsed ? ' is-hidden' : ''}" data-record-type="${escapeHtml(recordType)}">
+              <td>${escapeHtml(String(row.lineNumber))}</td>
+              <td>${escapeHtml(row.recordType)}</td>
+              <td>${escapeHtml(row.participantCode)}</td>
+              <td>${escapeHtml(row.fileCreationDate)}</td>
+              <td>${escapeHtml(row.fileCreationTime)}</td>
+              <td>${escapeHtml(row.fileReference)}</td>
+              <td>${escapeHtml(row.participantAccount)}</td>
+              <td>${escapeHtml(row.beneficialOwnerRef)}</td>
+              <td>${escapeHtml(row.ownerType)}</td>
+              <td>${escapeHtml(row.beneficialOwnerName)}</td>
+              <td>${escapeHtml(row.idType)}</td>
+              <td>${escapeHtml(row.idNumber)}</td>
+              <td>${escapeHtml(row.addressType)}</td>
+              <td>${escapeHtml(row.addressLine1)}</td>
+              <td>${escapeHtml(row.addressLine2)}</td>
+              <td>${escapeHtml(row.city)}</td>
+              <td>${escapeHtml(row.postalCode)}</td>
+              <td>${escapeHtml(row.country)}</td>
+              <td>${escapeHtml(row.isin)}</td>
+              <td>${escapeHtml(row.securityDescription)}</td>
+              <td>${escapeHtml(row.quantity)}</td>
+              <td>${escapeHtml(row.balanceType)}</td>
+              <td>${escapeHtml(row.marketValue)}</td>
+              <td>${escapeHtml(row.recordDate)}</td>
+              <td>${escapeHtml(row.settlementRef)}</td>
+              <td>${escapeHtml(row.trailerTotalRecords)}</td>
+            </tr>
+          `);
+        });
+      });
+
+      if (!rowsHtml.length) {
+        strateBirPreviewBody.innerHTML = `<tr><td class="orderbook-empty-row" colspan="${headers.length}">No BIR records generated yet.</td></tr>`;
+        return;
+      }
+
+      strateBirPreviewBody.innerHTML = rowsHtml.join('');
+    };
+
+    const toNumeric = (value) => {
+      const numeric = Number(String(value || '').replace(/,/g, ''));
+      return Number.isFinite(numeric) ? numeric : 0;
+    };
+
+    const formatMoney = (value) => {
+      const numeric = toNumeric(value);
+      return `R ${numeric.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    };
+
+    const buildStrateBirIndividuals = (lines) => {
+      const parsedRows = lines.map((line, index) => parseStrateBirLine(line, index + 1));
+      const byOwnerRef = {};
+      let headerRow = null;
+      let trailerRow = null;
+
+      parsedRows.forEach((row) => {
+        const recordType = String(row.recordType || '').toUpperCase();
+        if (recordType === 'H1') {
+          headerRow = row;
+          return;
+        }
+        if (recordType === 'T1') {
+          trailerRow = row;
+          return;
+        }
+
+        const ownerRef = String(row.beneficialOwnerRef || '').trim();
+        if (!ownerRef) return;
+
+        if (!byOwnerRef[ownerRef]) {
+          byOwnerRef[ownerRef] = {
+            ownerRef,
+            b1: null,
+            b2: null,
+            holdings: [],
+            rawRows: []
+          };
+        }
+
+        const bucket = byOwnerRef[ownerRef];
+        bucket.rawRows.push(row);
+
+        if (recordType === 'B1') {
+          bucket.b1 = row;
+          return;
+        }
+        if (recordType === 'B2') {
+          bucket.b2 = row;
+          return;
+        }
+        if (recordType === 'B3') {
+          bucket.holdings.push(row);
+        }
+      });
+
+      const individuals = Object.values(byOwnerRef)
+        .map((person) => {
+          const totalMarketValue = person.holdings.reduce((sum, holding) => sum + toNumeric(holding.marketValue), 0);
+          return {
+            ...person,
+            participantAccount: person.b1?.participantAccount || person.holdings[0]?.participantAccount || '-',
+            ownerType: person.b1?.ownerType || '-',
+            ownerName: person.b1?.beneficialOwnerName || '-',
+            country: person.b1?.country || person.b2?.country || '-',
+            holdingsCount: person.holdings.length,
+            totalMarketValue
+          };
+        })
+        .sort((a, b) => String(a.ownerName || '').localeCompare(String(b.ownerName || '')));
+
+      return {
+        headerRow,
+        trailerRow,
+        individuals
+      };
+    };
+
+    const renderStrateBirTablePreviewIndividual = (lines) => {
+      if (!strateBirPreviewBody || !strateBirPreviewHead) return;
+
+      strateBirPreviewHead.innerHTML = `
+        <tr>
+          <th>Beneficial Owner Name</th>
+          <th>Owner Ref</th>
+          <th>Account</th>
+          <th>Owner Type</th>
+          <th>Holdings</th>
+          <th>Total Market Value</th>
+          <th>Country</th>
+        </tr>
+      `;
+
+      const { headerRow, trailerRow, individuals } = buildStrateBirIndividuals(lines);
+      if (!individuals.length) {
+        strateBirPreviewBody.innerHTML = '<tr><td class="orderbook-empty-row" colspan="7">No individuals found in the current BIR payload.</td></tr>';
+        return;
+      }
+
+      strateBirPreviewBody.innerHTML = individuals.map((person) => {
+        const rowKey = escapeHtml(person.ownerRef || person.participantAccount || person.ownerName || '-');
+        const isOpen = strateBirExpandedIndividualRef === rowKey;
+
+        const identityHtml = `
+          <div class="strate-bir-individual-kv"><strong>Owner Name</strong><span>${escapeHtml(person.ownerName || '-')}</span></div>
+          <div class="strate-bir-individual-kv"><strong>Owner Ref</strong><span>${escapeHtml(person.ownerRef || '-')}</span></div>
+          <div class="strate-bir-individual-kv"><strong>Participant Account</strong><span>${escapeHtml(person.participantAccount || '-')}</span></div>
+          <div class="strate-bir-individual-kv"><strong>Owner Type</strong><span>${escapeHtml(person.ownerType || '-')}</span></div>
+          <div class="strate-bir-individual-kv"><strong>ID Type</strong><span>${escapeHtml(person.b1?.idType || '-')}</span></div>
+          <div class="strate-bir-individual-kv"><strong>ID Number</strong><span>${escapeHtml(person.b1?.idNumber || '-')}</span></div>
+          <div class="strate-bir-individual-kv"><strong>Address</strong><span>${escapeHtml([person.b2?.addressLine1 || '-', person.b2?.addressLine2 || '-'].filter(Boolean).join(', '))}</span></div>
+          <div class="strate-bir-individual-kv"><strong>City / Postal</strong><span>${escapeHtml(`${person.b2?.city || '-'} / ${person.b2?.postalCode || '-'}`)}</span></div>
+          <div class="strate-bir-individual-kv"><strong>Country</strong><span>${escapeHtml(person.country || '-')}</span></div>
+          <div class="strate-bir-individual-kv"><strong>File Reference</strong><span>${escapeHtml(headerRow?.fileReference || '-')}</span></div>
+          <div class="strate-bir-individual-kv"><strong>File Date</strong><span>${escapeHtml(headerRow?.fileCreationDate || '-')}</span></div>
+          <div class="strate-bir-individual-kv"><strong>Trailer Count</strong><span>${escapeHtml(trailerRow?.trailerTotalRecords || '-')}</span></div>
+        `;
+
+        const holdingsRowsHtml = person.holdings.length
+          ? person.holdings.map((holding) => `
+              <tr>
+                <td>${escapeHtml(String(holding.lineNumber || '-'))}</td>
+                <td>${escapeHtml(holding.isin || '-')}</td>
+                <td>${escapeHtml(holding.securityDescription || '-')}</td>
+                <td>${escapeHtml(holding.quantity || '-')}</td>
+                <td>${escapeHtml(holding.balanceType || '-')}</td>
+                <td>${escapeHtml(holding.marketValue || '-')}</td>
+                <td>${escapeHtml(holding.recordDate || '-')}</td>
+                <td>${escapeHtml(holding.settlementRef || '-')}</td>
+              </tr>
+            `).join('')
+          : '<tr><td class="orderbook-empty-row" colspan="8">No B3 holdings for this individual.</td></tr>';
+
+        return `
+          <tr class="strate-bir-individual-row" data-strate-individual-main-row data-owner-ref="${rowKey}">
+            <td>${escapeHtml(person.ownerName || '-')}</td>
+            <td>${escapeHtml(person.ownerRef || '-')}</td>
+            <td>${escapeHtml(person.participantAccount || '-')}</td>
+            <td>${escapeHtml(person.ownerType || '-')}</td>
+            <td>${escapeHtml(String(person.holdingsCount))}</td>
+            <td>${escapeHtml(formatMoney(person.totalMarketValue))}</td>
+            <td>${escapeHtml(person.country || '-')}</td>
+          </tr>
+          <tr class="orderbook-detail-row${isOpen ? '' : ' is-hidden'}" data-strate-individual-detail-row data-owner-ref="${rowKey}">
+            <td colspan="7">
+              <div class="strate-bir-individual-details">
+                <div class="orderbook-detail-title">BIR details for ${escapeHtml(person.ownerName || person.ownerRef || 'individual')}</div>
+                <div class="strate-bir-individual-grid">${identityHtml}</div>
+                <div class="orderbook-detail-table-wrap">
+                  <table class="orderbook-detail-table">
+                    <thead>
+                      <tr>
+                        <th>Line</th>
+                        <th>ISIN</th>
+                        <th>Security</th>
+                        <th>Quantity</th>
+                        <th>Balance Type</th>
+                        <th>Market Value</th>
+                        <th>Record Date</th>
+                        <th>Settlement Ref</th>
+                      </tr>
+                    </thead>
+                    <tbody>${holdingsRowsHtml}</tbody>
+                  </table>
+                </div>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    };
+
+    const syncStrateBirViewToggleButton = () => {
+      if (!toggleStrateBirViewBtn) return;
+      const tableMode = strateBirPreviewMode === 'table';
+      toggleStrateBirViewBtn.textContent = tableMode ? 'Raw view' : 'Table view';
+      toggleStrateBirViewBtn.classList.toggle('is-active', tableMode);
+      toggleStrateBirViewBtn.setAttribute('aria-pressed', tableMode ? 'true' : 'false');
+
+      if (strateBirTypeFilter) {
+        strateBirTypeFilter.style.display = tableMode ? '' : 'none';
+        strateBirTypeFilter.value = strateBirTableViewMode;
+      }
+    };
+
+    const renderStrateBirPreview = () => {
+      if (!strateBirPreviewBody || !strateBirCount || !exportStrateBirBtn) return;
+
+      const payload = buildStrateBirPayload();
+      const lines = payload.lines || [];
+      const hasData = lines.length > 2;
+      exportStrateBirBtn.disabled = !hasData;
+      syncStrateBirViewToggleButton();
+      strateBirCount.textContent = `${payload.totalRecords} records (${payload.clientCount} clients, ${payload.holdingCount} holdings)`;
+
+      if (!lines.length) {
+        const emptyColspan = strateBirPreviewMode === 'table' ? getStrateBirTableHeaders().length : 2;
+        if (strateBirPreviewHead) {
+          if (strateBirPreviewMode === 'table') {
+            strateBirPreviewHead.innerHTML = `<tr>${getStrateBirTableHeaders().map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr>`;
+          } else {
+            strateBirPreviewHead.innerHTML = '<tr><th style="width: 92px;">Line</th><th>Record</th></tr>';
+          }
+        }
+        strateBirPreviewBody.innerHTML = `<tr><td class="orderbook-empty-row" colspan="${emptyColspan}">No BIR records generated yet.</td></tr>`;
+        return;
+      }
+
+      if (strateBirPreviewMode === 'table') {
+        if (strateBirTableViewMode === 'accurate') {
+          renderStrateBirTablePreviewAccurate(lines);
+        } else if (strateBirTableViewMode === 'individual') {
+          renderStrateBirTablePreviewIndividual(lines);
+        } else {
+          renderStrateBirTablePreviewSimple(lines);
+        }
+        return;
+      }
+
+      renderStrateBirRawPreview(lines);
+    };
+
+    const getArchiveDateKey = (dateObj) => `${dateObj.getFullYear()}-${pad2(dateObj.getMonth() + 1)}-${pad2(dateObj.getDate())}`;
+
+    const getArchivedSourceIds = () => {
+      const sourceIds = new Set();
+      filledOrderbooksArchive.forEach((book) => {
+        (book?.rows || []).forEach((row) => {
+          if (row?.sourceId) {
+            sourceIds.add(String(row.sourceId));
+          }
+          if (Array.isArray(row?.sourceIds)) {
+            row.sourceIds.forEach((sourceId) => {
+              if (sourceId) sourceIds.add(String(sourceId));
+            });
+          }
+        });
+      });
+      return sourceIds;
+    };
+
+    const getLatestArchiveCreatedAt = () => {
+      let latest = null;
+      filledOrderbooksArchive.forEach((book) => {
+        const createdAt = book?.createdAt;
+        if (!createdAt) return;
+        if (!latest || new Date(createdAt).getTime() > new Date(latest).getTime()) {
+          latest = createdAt;
+        }
+      });
+      return latest;
+    };
+
+    const hasFilledOrderbookForDate = (dateKey) => {
+      return filledOrderbooksArchive.some((item) => item.dateKey === dateKey);
+    };
+
+    const getNextFilledOrderbookSequence = () => {
+      const maxExisting = filledOrderbooksArchive.reduce((maxValue, item) => {
+        const directSequence = Number(item?.sequence);
+        if (Number.isFinite(directSequence) && directSequence > maxValue) {
+          return directSequence;
+        }
+
+        const titleMatch = String(item?.title || '').match(/order\s*book\s*(\d+)/i);
+        if (titleMatch) {
+          const parsed = Number(titleMatch[1]);
+          if (Number.isFinite(parsed) && parsed > maxValue) {
+            return parsed;
+          }
+        }
+
+        return maxValue;
+      }, 0);
+
+      return maxExisting + 1;
+    };
+
+    const getTodayOrderbookSequence = () => {
+      const now = new Date();
+      const dateKey = getArchiveDateKey(now);
+      const todayItems = filledOrderbooksArchive.filter((item) => String(item?.dateKey || '') === dateKey);
+
+      if (!todayItems.length) {
+        return getNextFilledOrderbookSequence();
+      }
+
+      const maxToday = todayItems.reduce((maxValue, item) => {
+        const directSequence = Number(item?.sequence);
+        if (Number.isFinite(directSequence) && directSequence > maxValue) {
+          return directSequence;
+        }
+
+        const titleMatch = String(item?.title || '').match(/order\s*book\s*(\d+)/i);
+        if (titleMatch) {
+          const parsed = Number(titleMatch[1]);
+          if (Number.isFinite(parsed) && parsed > maxValue) {
+            return parsed;
+          }
+        }
+
+        return maxValue;
+      }, 0);
+
+      return maxToday > 0 ? maxToday : getNextFilledOrderbookSequence();
+    };
+
+    const updateOrderbookHeaderSequence = () => {
+      activeOrderbookSequence = getTodayOrderbookSequence();
+      if (!orderbookTitle) return;
+      orderbookTitle.textContent = `Orderbook :${String(activeOrderbookSequence).padStart(2, '0')}`;
+    };
+
+    const isPastFilledCutoff = (dateObj) => {
+      const hour = dateObj.getHours();
+      const minute = dateObj.getMinutes();
+      return hour > 15 || (hour === 15 && minute >= 30);
+    };
+
+    const readFilledArchive = () => {
+      try {
+        const raw = localStorage.getItem(FILLED_ARCHIVE_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    };
+
+    const persistFilledArchive = () => {
+      try {
+        localStorage.setItem(FILLED_ARCHIVE_KEY, JSON.stringify(filledOrderbooksArchive));
+      } catch {
+      }
+    };
+
+    const hasCompletedArchiveBackfill = () => {
+      try {
+        return localStorage.getItem(ARCHIVE_BACKFILL_KEY) === 'done';
+      } catch {
+        return false;
+      }
+    };
+
+    const markArchiveBackfillCompleted = () => {
+      try {
+        localStorage.setItem(ARCHIVE_BACKFILL_KEY, 'done');
+      } catch {
+      }
+    };
+
+    const normalizeMatchText = (value) => String(value || '').trim().toLowerCase();
+
+    const buildBackfillBndRows = (relatedRawRows, fallbackSequence) => {
+      return (relatedRawRows || []).map((item, index) => {
+        const seed = deterministicNumberFromText(item.userId || item.sourceId || item.clientName || `${index + 1}`);
+        return {
+          line: index + 1,
+          clientAccountId: item.clientAccountId || `MINT-${String(seed % 1000000).padStart(6, '0')}`,
+          bndReference: item.bndReference || buildBndReference({
+            timestamp: item.timestamp,
+            orderbookSequence: item.orderbookSequence || fallbackSequence || activeOrderbookSequence,
+            lineNumber: index + 1
+          }),
+          clientName: shortClientName(item.clientName),
+          idRegNoFull: String(item.clientIdRegNo || '-'),
+          quantity: item.totalQuantity || '-',
+          marketValue: asRandValue(item.marketValue || '-'),
+          orderTimestamp: formatTimeOnly(item.timestamp),
+          instructionType: item.orderType || 'Market',
+          settlementRef: item.settlementRef || ''
+        };
+      });
+    };
+
+    const backfillSnapshotWithCurrentData = (snapshot) => {
+      const sequence = Number(snapshot?.sequence || 0) || activeOrderbookSequence;
+      const rows = Array.isArray(snapshot?.rows) ? snapshot.rows : [];
+      let changed = false;
+
+      const updatedRows = rows.map((row) => {
+        const needsBndRows = !Array.isArray(row?.bndRows) || !row.bndRows.length;
+        const hasUnknownClient = Array.isArray(row?.bndRows) && row.bndRows.some((r) => r.clientName === 'Unknown Client');
+        const topLevelUnknown = row?.clientName === 'Unknown Client';
+        const needsClientAccountId = !String(row?.clientAccountId || '').trim();
+        const needsEnrichment = needsBndRows || hasUnknownClient || topLevelUnknown || needsClientAccountId;
+
+        if (!needsEnrichment) {
+          return row;
+        }
+
+        const rowSecurityId = String(row?.securityId || '').trim();
+        const rowSide = String(row?.side || '').trim().toUpperCase() || 'BUY';
+        const rowInstrument = normalizeMatchText(row?.instrumentName);
+        const rowTicker = normalizeMatchText(row?.ticker);
+        const relatedRawRows = (allOrderbookRawRows || [])
+          .filter((rawRow) => {
+            if (String(rawRow?.side || '').trim().toUpperCase() !== rowSide) return false;
+
+            const rawSecurityId = String(rawRow?.securityId || '').trim();
+            if (rowSecurityId && rawSecurityId) {
+              return rawSecurityId === rowSecurityId;
+            }
+
+            return normalizeMatchText(rawRow?.instrumentName) === rowInstrument
+              && normalizeMatchText(rawRow?.ticker) === rowTicker;
+          })
+          .sort((a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime());
+
+        if (!relatedRawRows.length) {
+          return row;
+        }
+
+        const builtBndRows = buildBackfillBndRows(relatedRawRows, sequence);
+        const firstClientAccountId = builtBndRows[0]?.clientAccountId || '';
+        const enrichedClientName = relatedRawRows[0]?.clientName || row.clientName || 'Unknown Client';
+        const enrichedIdRegNo = relatedRawRows[0]?.clientIdRegNo || row.clientIdRegNo || '-';
+        changed = true;
+
+        return {
+          ...row,
+          clientName: (topLevelUnknown && enrichedClientName !== 'Unknown Client') ? enrichedClientName : row.clientName,
+          clientIdRegNo: (String(row?.clientIdRegNo || '').trim() === '-' && enrichedIdRegNo !== '-') ? enrichedIdRegNo : row.clientIdRegNo,
+          clientAccountId: String(row?.clientAccountId || '').trim() || firstClientAccountId,
+          sourceIds: Array.isArray(row?.sourceIds) && row.sourceIds.length
+            ? row.sourceIds
+            : relatedRawRows.map((item) => String(item?.sourceId || '')).filter(Boolean),
+          sourceId: row?.sourceId || String(relatedRawRows[0]?.sourceId || ''),
+          bndRows: builtBndRows
+        };
+      });
+
+      if (!changed) return { changed: false, snapshot };
+      return {
+        changed: true,
+        snapshot: {
+          ...snapshot,
+          rows: updatedRows
+        }
+      };
+    };
+
+    const maybeBackfillLegacyArchiveSnapshots = async () => {
+      if (hasCompletedArchiveBackfill()) return;
+      if (!Array.isArray(filledOrderbooksArchive) || !filledOrderbooksArchive.length) {
+        markArchiveBackfillCompleted();
+        return;
+      }
+      if (!Array.isArray(allOrderbookRawRows) || !allOrderbookRawRows.length) {
+        return;
+      }
+
+      const updatedSnapshots = [];
+      const changedSnapshots = [];
+
+      filledOrderbooksArchive.forEach((snapshot) => {
+        const result = backfillSnapshotWithCurrentData(snapshot);
+        updatedSnapshots.push(result.snapshot);
+        if (result.changed) {
+          changedSnapshots.push(result.snapshot);
+        }
+      });
+
+      if (changedSnapshots.length) {
+        for (const snapshot of changedSnapshots) {
+          try {
+            await upsertFilledArchiveToDb(snapshot);
+          } catch (error) {
+            console.error('Archive backfill upsert failed:', error?.message || error);
+          }
+        }
+
+        filledOrderbooksArchive = updatedSnapshots;
+        persistFilledArchive();
+        renderFilledOrderbooks();
+      }
+
+      markArchiveBackfillCompleted();
+    };
+
+    const loadFilledArchiveFromDb = async () => {
+      const { data } = await supabaseClient.auth.getSession();
+      const token = data?.session?.access_token;
+      if (!token) return null;
+
+      const response = await fetch('/api/orderbook/archive', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.details || payload?.error || `Archive HTTP ${response.status}`);
+      }
+
+      const payload = await response.json().catch(() => ({}));
+      const items = Array.isArray(payload?.items) ? payload.items : [];
+      return items;
+    };
+
+    const upsertFilledArchiveToDb = async (snapshot) => {
+      const { data } = await supabaseClient.auth.getSession();
+      const token = data?.session?.access_token;
+      if (!token || !snapshot) return false;
+
+      const response = await fetch('/api/orderbook/archive-upsert', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ snapshot })
+      });
+
+      return response.ok;
+    };
+
+    const emailStatusChip = (status) => {
+      if (status === 'sent') {
+        return '<span class="filled-orderbook-email-status sent">Email Sent</span>';
+      }
+      if (status === 'failed') {
+        return '<button type="button" class="filled-orderbook-email-status failed retry" data-email-retry-btn aria-label="Retry email">Email Failed</button>';
+      }
+      return '';
+    };
+
+    const formatBookTitle = (book) => {
+      const rawTitle = String(book?.title || '').trim();
+      if (rawTitle) {
+        return rawTitle.replace(/^filled\s+order\s+book\s*/i, 'Order Book ');
+      }
+      return `Order Book ${book?.sequence || '-'}: ${book?.dateLabel || '-'}`;
+    };
+
+    const setActiveTab = (tabName) => {
+      const normalizedTab = tabName === 'closed' || tabName === 'strate-bir' ? tabName : 'active';
+      const isActiveBooks = normalizedTab === 'active';
+      const isClosedBooks = normalizedTab === 'closed';
+      const isStrateBir = normalizedTab === 'strate-bir';
+
+      if (activeBooksTab) {
+        activeBooksTab.classList.toggle('active', isActiveBooks);
+        activeBooksTab.setAttribute('aria-selected', isActiveBooks ? 'true' : 'false');
+      }
+      if (closedBooksTab) {
+        closedBooksTab.classList.toggle('active', isClosedBooks);
+        closedBooksTab.setAttribute('aria-selected', isClosedBooks ? 'true' : 'false');
+      }
+      if (strateBirTab) {
+        strateBirTab.classList.toggle('active', isStrateBir);
+        strateBirTab.setAttribute('aria-selected', isStrateBir ? 'true' : 'false');
+      }
+      if (activeBooksPanel) {
+        activeBooksPanel.classList.toggle('active', isActiveBooks);
+      }
+      if (closedBooksPanel) {
+        closedBooksPanel.classList.toggle('active', isClosedBooks);
+      }
+      if (strateBirPanel) {
+        strateBirPanel.classList.toggle('active', isStrateBir);
+      }
+    };
+
+    const renderFilledOrderbooks = () => {
+      if (!filledOrderbooksList) return;
+
+      if (!filledOrderbooksArchive.length) {
+        filledOrderbooksList.innerHTML = '<div class="filled-orderbook-empty">No active order books yet.</div>';
+        return;
+      }
+
+      const sorted = filledOrderbooksArchive.slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      filledOrderbooksList.innerHTML = sorted.map((book) => {
+        const rows = Array.isArray(book.rows) ? book.rows : [];
+        const body = rows.length
+          ? rows.map((row, rowIndex) => {
+            const rowKey = `${String(book.id || 'book')}-${rowIndex}`;
+            return `
+            <tr class="orderbook-main-row" data-archive-main-row data-archive-line-key="${escapeHtml(rowKey)}">
+              <td>${escapeHtml(String(row.line ?? '-'))}</td>
+              <td>${escapeHtml(row.instrumentName || '-')}</td>
+              <td class="orderbook-cell-muted">${escapeHtml(row.ticker || '-')}</td>
+              <td>${escapeHtml(row.side || '-')}</td>
+              <td>${escapeHtml(String(row.totalQuantity ?? '-'))}</td>
+              <td>${escapeHtml(asRandValue(row.avgFill))}</td>
+              <td>${escapeHtml(asRandValue(row.marketValue))}</td>
+              <td>${escapeHtml(row.orderType || '-')}</td>
+              <td>${escapeHtml(row.settlementAccount || '')}</td>
+              <td>${escapeHtml(row.brokerRef || '')}</td>
+              <td>${escapeHtml(String(row.unrealizedPnl ?? '-'))}</td>
+            </tr>
+            <tr class="orderbook-detail-row is-hidden" data-archive-detail-row data-archive-line-key="${escapeHtml(rowKey)}">
+              <td colspan="11">
+                <div class="orderbook-detail-wrap">
+                  ${row.isStrategy ? renderStrategyDetailsTable(row) : `<div class="orderbook-detail-title">BND Allocation Details</div>${renderSnapshotBndDetailsTable(rows, row, book.sequence)}`}
+                </div>
+              </td>
+            </tr>
+          `;
+          }).join('')
+          : '<tr><td class="orderbook-empty-row" colspan="11">No rows captured.</td></tr>';
+
+        return `
+          <details class="filled-orderbook-item">
+            <summary class="filled-orderbook-summary">
+              <span>${escapeHtml(formatBookTitle(book))}</span>
+              <span class="filled-orderbook-meta">
+                <span>${escapeHtml(book.dateLabel || '-')}</span>
+                ${book.sentAt ? `<span>Sent: ${escapeHtml(new Date(book.sentAt).toLocaleString())}</span>` : ''}
+                <span data-book-id="${escapeHtml(String(book.id || ''))}">${emailStatusChip(book.emailStatus)}</span>
+              </span>
+            </summary>
+            <div class="filled-orderbook-details">
+              <div class="orderbook-table-wrap">
+                <table class="orderbook-table">
+                  <thead>
+                    <tr>
+                      <th>Line</th>
+                      <th>Instrument Name</th>
+                      <th>Ticker</th>
+                      <th>Side</th>
+                      <th>Total QYT</th>
+                      <th>Avg Fill</th>
+                      <th>Market Value</th>
+                      <th>Order Type</th>
+                      <th>Settlement Account</th>
+                      <th>Broker Ref</th>
+                      <th>Unrealized PnL</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${body}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </details>
+        `;
+      }).join('');
+    };
+
+    const sendFilledOrderbookEmail = async (snapshot) => {
+      try {
+        const { data } = await supabaseClient.auth.getSession();
+        const token = data?.session?.access_token;
+        if (!token) {
+          return { status: 'failed', details: 'No active session token found.' };
+        }
+
+        const response = await fetch('/api/orderbook/send-csv', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            subject: `${snapshot.title}`,
+            csvContent: toCsvContent(snapshot.rows || []),
+            fileName: `${(snapshot.title || 'order-book').replace(/\s+/g, '-').toLowerCase()}.csv`
+          })
+        });
+
+        if (response.ok) {
+          return { status: 'sent', details: '' };
+        }
+
+        const payload = await response.json().catch(() => ({}));
+        const details = payload?.details || payload?.error || `HTTP ${response.status}`;
+        console.error('Orderbook email send failed:', details, payload);
+        return { status: 'failed', details };
+      } catch (error) {
+        const details = error?.message || 'Network or unknown error';
+        console.error('Orderbook email send failed:', details, error);
+        return { status: 'failed', details };
+      }
+    };
+
+    const captureFilledOrderbook = async () => {
+      if (!allOrderbookRows.length) return;
+
+      const now = new Date();
+      const dateKey = getArchiveDateKey(now);
+      const sequence = getNextFilledOrderbookSequence();
+      activeOrderbookSequence = sequence;
+      const snapshot = {
+        id: `${dateKey}-${sequence}`,
+        dateKey,
+        sequence,
+        title: `Order Book ${sequence}: ${now.toLocaleString()}`,
+        dateLabel: now.toLocaleString(),
+        createdAt: now.toISOString(),
+        rows: allOrderbookRows.map((row, index) => ({
+          ...row,
+          orderbookSequence: sequence,
+          line: index + 1
+        })),
+        emailStatus: ''
+      };
+
+      const emailResult = await sendFilledOrderbookEmail(snapshot);
+      snapshot.emailStatus = emailResult.status;
+      snapshot.emailError = emailResult.details || '';
+      if (emailResult.status === 'sent') {
+        snapshot.sentAt = new Date().toISOString();
+      }
+
+      try {
+        await upsertFilledArchiveToDb(snapshot);
+      } catch (error) {
+        console.error('Archive DB upsert failed:', error?.message || error);
+      }
+
+      filledOrderbooksArchive.push(snapshot);
+      persistFilledArchive();
+      renderFilledOrderbooks();
+      updateOrderbookHeaderSequence();
+      allOrderbookRows = [];
+      applySearchFilter();
+    };
+
+    const maybeCaptureFilledOrderbook = async () => {
+      if (!allOrderbookRows.length) return;
+      if (isCapturingFilledOrderbook) return;
+
+      const now = new Date();
+      const todayKey = getArchiveDateKey(now);
+
+      // One capture per day
+      if (hasFilledOrderbookForDate(todayKey)) return;
+
+      // Only capture once a new day has started and there are rows from
+      // before today. This lets records pile up visibly on the active
+      // orderbook throughout the day before being archived.
+      const hasOlderRows = allOrderbookRows.some((row) => {
+        if (!row.timestamp) return true;
+        return getArchiveDateKey(new Date(row.timestamp)) < todayKey;
+      });
+
+      if (!hasOlderRows) return;
+
+      isCapturingFilledOrderbook = true;
+      try {
+        await captureFilledOrderbook();
+      } finally {
+        isCapturingFilledOrderbook = false;
+      }
+    };
+
+    const pad2 = (value) => String(value).padStart(2, '0');
+
+    const renderOrderbookTimer = () => {
+      if (!orderbookTimer) return;
+      const now = new Date();
+      const hours = pad2(now.getHours());
+      const minutes = pad2(now.getMinutes());
+      const seconds = pad2(now.getSeconds());
+      orderbookTimer.textContent = `${hours}:${minutes}:${seconds}`;
+
+      const isPurpleMoment = hours === '15' && minutes === '30';
+      if (isPurpleMoment) {
+        timerHighlightUntil = Date.now() + 5000;
+      }
+      orderbookTimer.classList.toggle('is-hit', Date.now() <= timerHighlightUntil);
+
+      maybeCaptureFilledOrderbook();
+    };
+
+    const startOrderbookTimer = () => {
+      renderOrderbookTimer();
+      setInterval(renderOrderbookTimer, 1000);
+    };
+
+    const renderOrderbookRows = (rows) => {
+      if (!orderbookTableBody || !orderbookCount || !exportOrderbookBtn) return;
+      orderbookCount.textContent = `${rows.length} record${rows.length === 1 ? '' : 's'}`;
+      exportOrderbookBtn.disabled = rows.length === 0;
+
+      if (!rows.length) {
+        orderbookTableBody.innerHTML = '<tr><td class="orderbook-empty-row" colspan="11">No orderbook records found.</td></tr>';
+        return;
+      }
+
+      orderbookTableBody.innerHTML = rows.map((row) => {
+        const settlementOptions = (row.settlementAccountOptions || []).map((option) => {
+          const isSelected = option === row.settlementAccount ? ' selected' : '';
+          return `<option value="${escapeHtml(option)}"${isSelected}>${escapeHtml(option)}</option>`;
+        }).join('');
+        const brokerRefOptions = (row.brokerRefOptions || []).map((option) => {
+          const isSelected = option === row.brokerRef ? ' selected' : '';
+          return `<option value="${escapeHtml(option)}"${isSelected}>${escapeHtml(option)}</option>`;
+        }).join('');
+        const lineKey = escapeHtml(String(row.line));
+
+        return `
+          <tr class="orderbook-main-row" data-orderbook-main-row data-line-key="${lineKey}">
+            <td>${escapeHtml(String(row.line ?? '-'))}</td>
+            <td>${escapeHtml(row.instrumentName || '-')}${row.isStrategy ? ' <span class="strategy-badge">Strategy</span>' : ''}</td>
+            <td class="orderbook-cell-muted">${escapeHtml(row.ticker || '-')}</td>
+            <td>${escapeHtml(row.side || '-')}</td>
+            <td>${escapeHtml(String(row.totalQuantity ?? '-'))}</td>
+            <td>${escapeHtml(asRandValue(row.avgFill))}</td>
+            <td>${escapeHtml(asRandValue(row.marketValue))}</td>
+            <td>${escapeHtml(row.orderType || '-')}</td>
+            <td>
+              <select class="orderbook-select" data-settlement-select data-line="${escapeHtml(String(row.line))}">
+                ${settlementOptions}
+              </select>
+            </td>
+            <td>
+              <select class="orderbook-select" data-broker-select data-line="${escapeHtml(String(row.line))}">
+                ${brokerRefOptions}
+              </select>
+            </td>
+            <td>${escapeHtml(String(row.unrealizedPnl ?? '-'))}</td>
+          </tr>
+          <tr class="orderbook-detail-row is-hidden" data-orderbook-detail-row data-line-key="${lineKey}">
+            <td colspan="11">
+              <div class="orderbook-detail-wrap">
+                ${row.isStrategy ? renderStrategyDetailsTable(row) : `<div class="orderbook-detail-title">BND Allocation Details</div>${renderBndDetailsTable(row)}`}
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    };
+
+    const applySearchFilter = () => {
+      const query = orderbookSearch?.value?.trim().toLowerCase() || '';
+      if (!query) {
+        renderOrderbookRows(allOrderbookRows);
+        return;
+      }
+
+      const filtered = allOrderbookRows.filter((row) => {
+        return String(row.instrumentName || '').toLowerCase().includes(query)
+          || String(row.ticker || '').toLowerCase().includes(query)
+          || String(row.side || '').toLowerCase().includes(query)
+          || String(row.marketValue || '').toLowerCase().includes(query)
+          || String(row.orderType || '').toLowerCase().includes(query)
+          || String(row.settlementAccount || '').toLowerCase().includes(query)
+          || String(row.brokerRef || '').toLowerCase().includes(query)
+          || String(row.unrealizedPnl || '').toLowerCase().includes(query);
+      });
+      renderOrderbookRows(filtered);
+    };
+
+    const loadOrderbookClientSideFallback = async () => {
+      const { data: holdingsRows, error: holdingsError } = await supabaseClient
+        .from('stock_holdings')
+        .select('id, user_id, security_id, quantity, avg_fill, market_value, unrealized_pnl, as_of_date, created_at, updated_at, status:"Status", fill_date:"Fill_date", exit_date:"Exit_date", avg_exit, strategy_id')
+        .order('updated_at', { ascending: false });
+
+      if (holdingsError) {
+        throw new Error(holdingsError.message || 'Could not load stock_holdings');
+      }
+
+      const holdings = holdingsRows || [];
+      const securityIds = [...new Set(holdings.map((row) => row.security_id).filter(Boolean))];
+      const userIds = [...new Set(holdings.map((row) => row.user_id).filter(Boolean))];
+
+      const securitiesMap = {};
+      const profilesMap = {};
+      const onboardingPackDetailsMap = {};
+      const strategiesMap = {};
+      if (securityIds.length) {
+        const { data: securityRows, error: securityError } = await supabaseClient
+          .from('securities')
+          .select('id, name, symbol, last_price, isin')
+          .in('id', securityIds);
+
+        if (securityError) {
+          console.error('Securities load error:', securityError);
+        } else {
+          (securityRows || []).forEach((security) => {
+            securitiesMap[security.id] = security;
+          });
+        }
+      }
+
+      if (userIds.length) {
+        const { data: profileRows, error: profileError } = await supabaseClient
+          .from('profiles')
+          .select('id, first_name, last_name, mint_number, id_number, address')
+          .in('id', userIds);
+
+        if (profileError) {
+          console.error('Profiles load error:', profileError);
+        } else {
+          (profileRows || []).forEach((profile) => {
+            profilesMap[profile.id] = profile;
+          });
+        }
+
+        const { data: packRows, error: packError } = await supabaseClient
+          .from('user_onboarding_pack_details')
+          .select('user_id, pack_details')
+          .in('user_id', userIds);
+
+        if (packError) {
+          console.error('Pack details load error:', packError);
+        } else {
+          (packRows || []).forEach((row) => {
+            if (row?.user_id) {
+              onboardingPackDetailsMap[row.user_id] = row.pack_details;
+            }
+          });
+        }
+      }
+
+      const strategyIds = [...new Set(holdings.map((row) => row.strategy_id).filter(Boolean))];
+      if (strategyIds.length) {
+        const { data: strategyRows, error: strategyError } = await supabaseClient
+          .from('strategies')
+          .select('id, name, short_name, slug')
+          .in('id', strategyIds);
+
+        if (strategyError) {
+          console.error('Strategies load error:', strategyError);
+        } else {
+          (strategyRows || []).forEach((s) => {
+            strategiesMap[s.id] = s;
+          });
+        }
+      }
+
+      const archivedSourceIds = getArchivedSourceIds();
+      const latestArchiveCreatedAt = getLatestArchiveCreatedAt();
+      updateOrderbookHeaderSequence();
+
+      const rawRows = holdings.map((row, index) => {
+        const security = securitiesMap[row.security_id] || {};
+        const profile = profilesMap[row.user_id] || {};
+        const packDetails = onboardingPackDetailsMap[row.user_id] || null;
+        const strategy = row.strategy_id ? (strategiesMap[row.strategy_id] || null) : null;
+        const instrumentName = security.name || '-';
+        const ticker = security.symbol ?? '-';
+        const isin = security.isin ?? '-';
+        const timestamp = row.updated_at || row.created_at || row.as_of_date || row.fill_date || null;
+        const profileName = [profile.first_name, profile.last_name].filter(Boolean).join(' ').trim();
+        const clientName = profileName || extractNameFromPackDetails(packDetails) || 'Unknown Client';
+        const accountSeed = deterministicNumberFromText(row.user_id || row.id || `${index + 1}`);
+        const profileMintNumber = String(profile.mint_number || '').trim();
+        const clientAccountId = profileMintNumber || `MINT-${String(accountSeed % 1000000).padStart(6, '0')}`;
+        const bndReference = buildBndReference({
+          timestamp,
+          orderbookSequence: activeOrderbookSequence,
+          lineNumber: index + 1
+        });
+        const clientIdFromPack = extractIdFromPackDetails(packDetails);
+        const mintNumber = String(profile.mint_number || '').trim();
+        const profileIdNumber = String(profile.id_number || '').trim();
+        const clientIdRegNoValue = profileIdNumber || mintNumber || clientIdFromPack || '-';
+        const settlementAccount = 'ComputerShare Nominees';
+        const settlementAccountOptions = ['ComputerShare Nominees'];
+        const brokerRef = 'Longmark';
+        const brokerRefOptions = ['Longmark'];
+        const quantityValue = Number(row.quantity);
+        const isQuantityNumeric = Number.isFinite(quantityValue);
+        const avgFillRaw = (row.avg_fill != null && row.avg_fill !== '') ? Number(row.avg_fill) : NaN;
+        const avgFillValue = Number.isFinite(avgFillRaw) ? (avgFillRaw / 100) : NaN;
+        const hasAvgFill = Number.isFinite(avgFillValue);
+        const lastPrice = Number(security.last_price);
+        const hasLastPrice = Number.isFinite(lastPrice);
+        const computedMarketValueNumber = (isQuantityNumeric && hasLastPrice)
+          ? ((quantityValue / 100) * lastPrice)
+          : 0;
+        const unrealizedPnlValue = Number(row.unrealized_pnl);
+        const normalizedUnrealizedPnlNumber = Number.isFinite(unrealizedPnlValue) ? unrealizedPnlValue : 0;
+        const side = isQuantityNumeric
+          ? (quantityValue < 0 ? 'SELL' : 'BUY')
+          : '-';
+        const orderType = 'Market';
+        const totalQuantity = isQuantityNumeric
+          ? quantityValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 6 })
+          : (row.quantity ?? '-');
+        const avgFill = hasAvgFill
+          ? `R ${avgFillValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          : '-';
+        const marketValue = (isQuantityNumeric && hasLastPrice)
+          ? `R ${computedMarketValueNumber.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          : '-';
+        const unrealizedPnl = Number.isFinite(unrealizedPnlValue)
+          ? normalizedUnrealizedPnlNumber.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          : (row.unrealized_pnl ?? '-');
+
+        return {
+          sourceId: row.id || '',
+          userId: row.user_id || '',
+          securityId: row.security_id || '',
+          line: index + 1,
+          instrumentName,
+          ticker,
+          clientName,
+          clientAccountId,
+          orderbookSequence: activeOrderbookSequence,
+          bndReference,
+          clientIdRegNo: clientIdRegNoValue,
+          profileAddress: String(profile.address || ''),
+          packDetails,
+          countryCode: 'ZAF',
+          holdingStatus: String(row.status || ''),
+          isin,
+          side,
+          quantityValue: isQuantityNumeric ? quantityValue : 0,
+          totalQuantity,
+          avgFillNumber: hasAvgFill ? avgFillValue : null,
+          avgFill,
+          marketValueNumber: computedMarketValueNumber,
+          marketValue,
+          unrealizedPnlNumber: normalizedUnrealizedPnlNumber,
+          unrealizedPnl,
+          orderType,
+          settlementAccount,
+          settlementAccountOptions,
+          brokerRef,
+          brokerRefOptions,
+          strategyId: row.strategy_id || null,
+          strategyName: strategy?.name || null,
+          strategyShortName: strategy?.short_name || null,
+          strategySlug: strategy?.slug || null,
+          timestamp
+        };
+      });
+
+      const filteredRows = rawRows.filter((row) => {
+        if (row.sourceId && archivedSourceIds.has(String(row.sourceId))) {
+          return false;
+        }
+
+        if (!latestArchiveCreatedAt || !row.timestamp) {
+          return true;
+        }
+
+        return new Date(row.timestamp).getTime() > new Date(latestArchiveCreatedAt).getTime();
+      });
+
+      allBirSourceRows = rawRows;
+      allOrderbookRawRows = filteredRows;
+      const aggregated = aggregateOrderbookRows(filteredRows);
+      return groupByStrategy(aggregated, filteredRows);
+    };
+
+    const loadOrderbook = async () => {
+      if (!orderbookTableBody) return;
+
+      const { data } = await supabaseClient.auth.getSession();
+      const accessToken = data?.session?.access_token;
+      if (!accessToken) {
+        orderbookTableBody.innerHTML = '<tr><td class="orderbook-empty-row" colspan="10">No active session found.</td></tr>';
+        return;
+      }
+
+      try {
+        allOrderbookRows = await loadOrderbookClientSideFallback();
+        await maybeBackfillLegacyArchiveSnapshots();
+        applySearchFilter();
+        renderStrateBirPreview();
+        maybeCaptureFilledOrderbook();
+      } catch (error) {
+        console.error('Orderbook load error:', error);
+        orderbookTableBody.innerHTML = '<tr><td class="orderbook-empty-row" colspan="10">Could not load orderbook data.</td></tr>';
+        allBirSourceRows = [];
+        renderStrateBirPreview();
+      }
+    };
+
+    if (orderbookSearch) {
+      orderbookSearch.addEventListener('input', applySearchFilter);
+    }
+
+    if (activeBooksTab) {
+      activeBooksTab.addEventListener('click', () => setActiveTab('active'));
+    }
+
+    if (closedBooksTab) {
+      closedBooksTab.addEventListener('click', () => setActiveTab('closed'));
+    }
+
+    if (strateBirTab) {
+      strateBirTab.addEventListener('click', () => setActiveTab('strate-bir'));
+    }
+
+    if (filledOrderbooksList) {
+      filledOrderbooksList.addEventListener('click', async (event) => {
+        const retryBtn = event.target.closest('[data-email-retry-btn]');
+        if (!retryBtn) return;
+
+        const idContainer = retryBtn.closest('[data-book-id]');
+        const targetBookId = idContainer?.dataset?.bookId;
+        if (!targetBookId) return;
+
+        const targetBook = filledOrderbooksArchive.find((book) => String(book.id) === String(targetBookId));
+        if (!targetBook) return;
+
+        retryBtn.disabled = true;
+        retryBtn.textContent = 'Sending...';
+
+        const emailResult = await sendFilledOrderbookEmail(targetBook);
+        targetBook.emailStatus = emailResult.status;
+        targetBook.emailError = emailResult.details || '';
+        try {
+          await upsertFilledArchiveToDb(targetBook);
+        } catch (error) {
+          console.error('Archive DB upsert failed:', error?.message || error);
+        }
+        persistFilledArchive();
+        renderFilledOrderbooks();
+      });
+
+      filledOrderbooksList.addEventListener('click', (event) => {
+        if (event.target.closest('button, a, input, select, summary')) {
+          return;
+        }
+
+        const mainRow = event.target.closest('[data-archive-main-row]');
+        if (!mainRow) return;
+
+        const rowKey = mainRow.dataset.archiveLineKey;
+        if (!rowKey) return;
+
+        const tableBody = mainRow.closest('tbody');
+        if (!tableBody) return;
+
+        const detailRows = Array.from(tableBody.querySelectorAll('[data-archive-detail-row]'));
+        const detailRow = detailRows.find((row) => row.dataset.archiveLineKey === rowKey);
+        if (!detailRow) return;
+
+        const willOpen = detailRow.classList.contains('is-hidden');
+        detailRows.forEach((row) => {
+          row.classList.add('is-hidden');
+        });
+
+        if (willOpen) {
+          detailRow.classList.remove('is-hidden');
+        }
+      });
+    }
+
+    if (orderbookTableBody) {
+      orderbookTableBody.addEventListener('click', (event) => {
+        if (event.target.closest('select, button, input, a, option')) {
+          return;
+        }
+
+        const mainRow = event.target.closest('[data-orderbook-main-row]');
+        if (!mainRow) return;
+
+        const lineKey = mainRow.dataset.lineKey;
+        if (!lineKey) return;
+
+        const detailRow = orderbookTableBody.querySelector(`[data-orderbook-detail-row][data-line-key="${lineKey}"]`);
+        if (!detailRow) return;
+
+        const willOpen = detailRow.classList.contains('is-hidden');
+
+        orderbookTableBody.querySelectorAll('[data-orderbook-detail-row]').forEach((row) => {
+          row.classList.add('is-hidden');
+        });
+
+        if (willOpen) {
+          detailRow.classList.remove('is-hidden');
+        }
+      });
+
+      orderbookTableBody.addEventListener('change', (event) => {
+        const settlementSelect = event.target.closest('[data-settlement-select]');
+        const brokerSelect = event.target.closest('[data-broker-select]');
+        const lineKey = settlementSelect?.dataset?.line || brokerSelect?.dataset?.line;
+        if (!lineKey) return;
+
+        const targetRow = allOrderbookRows.find(row => String(row.line) === String(lineKey));
+        if (!targetRow) return;
+
+        if (settlementSelect) {
+          targetRow.settlementAccount = settlementSelect.value;
+        }
+        if (brokerSelect) {
+          targetRow.brokerRef = brokerSelect.value;
+        }
+      });
+    }
+
+    if (exportOrderbookBtn) {
+      exportOrderbookBtn.addEventListener('click', () => {
+        const query = orderbookSearch?.value?.trim().toLowerCase() || '';
+        const rows = query
+          ? allOrderbookRows.filter((row) => {
+            return String(row.instrumentName || '').toLowerCase().includes(query)
+              || String(row.ticker || '').toLowerCase().includes(query)
+              || String(row.side || '').toLowerCase().includes(query)
+              || String(row.marketValue || '').toLowerCase().includes(query)
+              || String(row.orderType || '').toLowerCase().includes(query)
+              || String(row.settlementAccount || '').toLowerCase().includes(query)
+                || String(row.brokerRef || '').toLowerCase().includes(query)
+                || String(row.unrealizedPnl || '').toLowerCase().includes(query);
+          })
+          : allOrderbookRows;
+        downloadCsv(rows);
+      });
+    }
+
+    if (exportStrateBirBtn) {
+      exportStrateBirBtn.addEventListener('click', () => {
+        const payload = buildStrateBirPayload();
+        if (!payload.lines || payload.lines.length <= 2) return;
+        downloadTextFile(payload.fileName, payload.lines.join('\n'));
+      });
+    }
+
+    if (toggleStrateBirViewBtn) {
+      toggleStrateBirViewBtn.addEventListener('click', () => {
+        strateBirPreviewMode = strateBirPreviewMode === 'table' ? 'raw' : 'table';
+        renderStrateBirPreview();
+      });
+    }
+
+    if (strateBirTypeFilter) {
+      strateBirTypeFilter.addEventListener('change', () => {
+        const selected = String(strateBirTypeFilter.value || 'simple').toLowerCase();
+        if (selected === 'accurate' || selected === 'individual') {
+          strateBirTableViewMode = selected;
+        } else {
+          strateBirTableViewMode = 'simple';
+        }
+        strateBirExpandedIndividualRef = '';
+        renderStrateBirPreview();
+      });
+    }
+
+    if (strateBirPreviewBody) {
+      strateBirPreviewBody.addEventListener('click', (event) => {
+        const toggleRow = event.target.closest('[data-strate-group-toggle]');
+        if (toggleRow) {
+          const recordType = String(toggleRow.dataset.recordType || '').toUpperCase();
+          if (!recordType) return;
+          strateBirCollapsedGroups[recordType] = !strateBirCollapsedGroups[recordType];
+          renderStrateBirPreview();
+          return;
+        }
+
+        const individualRow = event.target.closest('[data-strate-individual-main-row]');
+        if (!individualRow) return;
+        const ownerRef = String(individualRow.dataset.ownerRef || '').trim();
+        if (!ownerRef) return;
+        strateBirExpandedIndividualRef = strateBirExpandedIndividualRef === ownerRef ? '' : ownerRef;
+        renderStrateBirPreview();
+      });
+    }
+
+    filledOrderbooksArchive = readFilledArchive();
+    setActiveTab('active');
+    updateOrderbookHeaderSequence();
+    renderFilledOrderbooks();
+    renderStrateBirPreview();
+
+    requireSession().then(async (ok) => {
+      if (!ok) return;
+
+      try {
+        const dbArchive = await loadFilledArchiveFromDb();
+        if (Array.isArray(dbArchive)) {
+          filledOrderbooksArchive = dbArchive;
+          persistFilledArchive();
+          updateOrderbookHeaderSequence();
+          renderFilledOrderbooks();
+        }
+      } catch (error) {
+        console.error('Could not load DB archive:', error?.message || error);
+      }
+
+      loadOrderbook();
+    });
+
+    startOrderbookTimer();
+  </script>
+</body>
+</html>

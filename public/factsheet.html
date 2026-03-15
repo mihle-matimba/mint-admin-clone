@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Factsheet · Mint dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      overflow: auto;
+    }
+
+    .gradient-bg {
+      background: #f5f6fa;
+    }
+
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 75px;
+      height: 100vh;
+      background: rgba(255, 255, 255, 0.86);
+      backdrop-filter: blur(8px);
+      border-right: 1px solid #e8defa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 0;
+      z-index: 1000;
+    }
+
+    .sidebar-logo {
+      width: 45px;
+      height: 45px;
+      background: transparent;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 40px;
+      cursor: pointer;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      width: 100%;
+      padding: 0 15px;
+    }
+
+    .nav-icon {
+      width: 45px;
+      height: 45px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .nav-icon svg {
+      width: 22px;
+      height: 22px;
+      fill: #9ca3af;
+      transition: fill 0.3s ease;
+    }
+
+    .nav-icon:hover svg,
+    .nav-icon.active svg {
+      fill: #374151;
+    }
+
+    .main-content {
+      margin-left: 75px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .top-nav {
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #e8defa;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .signout-btn {
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      color: #374151;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .signout-btn:hover {
+      background: #f9fafb;
+      border-color: #d1d5db;
+    }
+
+    .marquee-scroll {
+      overflow-x: auto;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .marquee-scroll::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    .marquee-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 999px;
+    }
+  </style>
+</head>
+<body class="gradient-bg min-h-screen">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <img src="/icon.png" alt="App logo" style="width: 32px; height: 32px;" />
+    </div>
+
+    <nav class="sidebar-nav">
+      <a class="nav-icon" href="/dashboard.html" aria-label="Dashboard">
+        <svg viewBox="0 0 24 24">
+          <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+        </svg>
+      </a>
+
+      <a class="nav-icon" href="/index.html" aria-label="Profiles">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 12c1.66 0 3-1.34 3-3S13.66 6 12 6 9 7.34 9 9s1.34 3 3 3zm0 2c-2.22 0-6 1.11-6 3.33V19h12v-1.67C18 15.11 14.22 14 12 14z"/>
+        </svg>
+      </a>
+
+      <a class="nav-icon active" href="/strategies.html" aria-label="Strategies">
+        <svg viewBox="0 0 24 24">
+          <path d="M4 19h4v-4H4v4zm0-6h4V5H4v8zm6 6h4v-7h-4v7zm0-9h4V5h-4v5zm6 6h4v-10h-4v10zm0-12h4V5h-4v2z"/>
+        </svg>
+      </a>
+
+      <a class="nav-icon" href="/orderbook.html" aria-label="Orderbook">
+        <svg viewBox="0 0 24 24">
+          <path d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2z"/>
+        </svg>
+      </a>
+
+      <a class="nav-icon" href="#" aria-label="Settings">
+        <svg viewBox="0 0 24 24">
+          <path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.62l-1.92-3.32c-.11-.2-.36-.28-.58-.2l-2.39.96c-.5-.38-1.05-.7-1.66-.94l-.36-2.54A.488.488 0 0 0 14.9 2h-3.8c-.24 0-.44.17-.48.4l-.36 2.54c-.61.24-1.16.56-1.66.94l-2.39-.96a.5.5 0 0 0-.58.2L3.7 8.44c-.11.21-.06.48.12.62l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.62l1.92 3.32c.11.2.36.28.58.2l2.39-.96c.5.38 1.05.7 1.66.94l.36 2.54c.04.23.24.4.48.4h3.8c.24 0 .44-.17.48-.4l.36-2.54c.61-.24 1.16-.56 1.66-.94l2.39.96c.22.08.47 0 .58-.2l1.92-3.32a.5.5 0 0 0-.12-.62l-2.03-1.58zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5S10.07 8.5 12 8.5s3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>
+        </svg>
+      </a>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+    <div class="top-nav">
+      <div class="flex items-center gap-3">
+        <a href="/strategies.html" class="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Back to Strategies
+        </a>
+      </div>
+      <button class="signout-btn" id="signOutBtn">Sign out</button>
+    </div>
+
+    <div id="factsheetContent" class="max-w-3xl mx-auto px-5 py-6 space-y-5">
+      <div class="flex items-center justify-center py-20">
+        <div class="text-center">
+          <div class="w-10 h-10 border-2 border-violet-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+          <p class="text-sm text-slate-500">Loading factsheet...</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://mfxnghmuccevsxwcetej.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1meG5naG11Y2NldnN4d2NldGVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NTI1ODAsImV4cCI6MjA4NDQyODU4MH0.lktfglzBMaHd79hLFDRH1HHSwsEwZ56Tv6e287kQiFg';
+
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const factsheetContent = document.getElementById('factsheetContent');
+    const signOutBtn = document.getElementById('signOutBtn');
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    const normalizeSymbol = (symbol) => {
+      if (typeof symbol !== 'string') return symbol;
+      return symbol.trim().split('.')[0].toUpperCase();
+    };
+
+    const formatCurrency = (value, currency = 'ZAR') => {
+      if (value === null || value === undefined) return null;
+      const numeric = Number(value);
+      if (Number.isNaN(numeric)) return null;
+      try {
+        return new Intl.NumberFormat('en-ZA', {
+          style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2
+        }).format(numeric);
+      } catch {
+        return `R ${numeric.toFixed(2)}`;
+      }
+    };
+
+    const formatPercent = (value) => {
+      if (value == null || Number.isNaN(Number(value))) return 'N/A';
+      return `${(Number(value) * 100).toFixed(2)}%`;
+    };
+
+    const formatChangePct = (pct) => {
+      if (pct === null || pct === undefined) return '-';
+      const val = (pct * 100).toFixed(2);
+      return pct >= 0 ? `+${val}%` : `${val}%`;
+    };
+
+    const getChangeColor = (val) => {
+      if (val == null || val === 0) return 'text-slate-500';
+      return val > 0 ? 'text-emerald-600' : 'text-rose-600';
+    };
+
+    const getReturnBgColor = (value) => {
+      if (value == null) return 'bg-slate-50 text-slate-600';
+      if (value > 0) return 'bg-emerald-50 text-emerald-700';
+      if (value < 0) return 'bg-rose-50 text-rose-700';
+      return 'bg-slate-50 text-slate-600';
+    };
+
+    const riskBadgeClass = (risk) => {
+      switch ((risk || '').toLowerCase()) {
+        case 'low': return 'bg-emerald-100 text-emerald-700';
+        case 'medium': return 'bg-amber-100 text-amber-700';
+        case 'high': return 'bg-rose-100 text-rose-700';
+        default: return 'bg-slate-100 text-slate-600';
+      }
+    };
+
+    const calculateMinInvestment = (holdings, securitiesMap) => {
+      if (!holdings || !holdings.length) return null;
+      let total = 0, matched = 0;
+      for (const h of holdings) {
+        const sym = h.ticker || h.symbol || h;
+        const sec = securitiesMap.get(sym) || securitiesMap.get(normalizeSymbol(sym));
+        if (sec?.last_price != null) {
+          const shares = Number(h.shares || h.quantity || 1);
+          total += shares * (Number(sec.last_price) / 100);
+          matched++;
+        }
+      }
+      return matched > 0 ? Math.round(total) : null;
+    };
+
+    const loadFactsheet = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const strategyId = params.get('id');
+
+      if (!strategyId) {
+        factsheetContent.innerHTML = '<div class="text-center py-20"><p class="text-slate-500">No strategy specified. <a href="/strategies.html" class="text-violet-600 hover:underline">Go back</a></p></div>';
+        return;
+      }
+
+      const { data: strategy, error: stratError } = await supabaseClient
+        .from('strategies')
+        .select('id, slug, name, short_name, description, risk_level, sector, tags, base_currency, icon_url, image_url, holdings, min_investment, is_public, is_featured, status, created_at')
+        .eq('id', strategyId)
+        .maybeSingle();
+
+      if (stratError || !strategy) {
+        factsheetContent.innerHTML = '<div class="text-center py-20"><p class="text-slate-500">Strategy not found. <a href="/strategies.html" class="text-violet-600 hover:underline">Go back</a></p></div>';
+        return;
+      }
+
+      let analytics = null;
+      const { data: analyticsRow } = await supabaseClient
+        .from('strategy_analytics')
+        .select('strategy_id, as_of_date, base_currency, latest_value, ytd_return, summary, curves, calendar_returns, computed_at, error')
+        .eq('strategy_id', strategyId)
+        .maybeSingle();
+
+      analytics = analyticsRow || null;
+
+      const holdings = Array.isArray(strategy.holdings) ? strategy.holdings : [];
+      let securitiesMap = new Map();
+
+      if (holdings.length > 0) {
+        const symbols = holdings.map(h => h.ticker || h.symbol || h);
+        const allSymbols = [...new Set([...symbols, ...symbols.map(normalizeSymbol)])];
+        const { data: secs } = await supabaseClient
+          .from('securities')
+          .select('symbol, name, logo_url, last_price, change_percent')
+          .in('symbol', allSymbols);
+
+        if (secs) {
+          secs.forEach(s => {
+            securitiesMap.set(s.symbol, s);
+            const norm = normalizeSymbol(s.symbol);
+            if (norm !== s.symbol) securitiesMap.set(norm, s);
+          });
+        }
+      }
+
+      const totalWeight = holdings.reduce((sum, h) => sum + (Number(h.weight) || 0), 0);
+      const minInvestment = calculateMinInvestment(holdings, securitiesMap) || Number(strategy.min_investment) || null;
+      const cashAmount = minInvestment ? minInvestment * 0.08 : null;
+
+      const analyticsTimestamp = analytics?.computed_at || analytics?.as_of_date || null;
+      const analyticsUnavailable = !analytics || analytics?.error;
+      const lastUpdatedLabel = analyticsTimestamp
+        ? new Date(analyticsTimestamp).toLocaleString()
+        : '';
+
+      let allTimeReturn = null;
+      if (analytics?.latest_value != null) {
+        const latestVal = Number(analytics.latest_value);
+        if (latestVal > 50 && latestVal < 200) {
+          allTimeReturn = (latestVal / 100) - 1;
+        } else if (latestVal >= -1 && latestVal <= 1) {
+          allTimeReturn = latestVal;
+        } else {
+          allTimeReturn = (latestVal / 100) - 1;
+        }
+      }
+      if (allTimeReturn == null && analytics?.ytd_return != null) {
+        allTimeReturn = Number(analytics.ytd_return);
+      }
+      const formattedAllTimeReturn = allTimeReturn != null
+        ? `${allTimeReturn >= 0 ? '+' : ''}${(allTimeReturn * 100).toFixed(2)}%`
+        : '-';
+      const allTimeTextClass = allTimeReturn != null
+        ? (allTimeReturn > 0 ? 'text-emerald-600' : allTimeReturn < 0 ? 'text-rose-600' : 'text-slate-500')
+        : 'text-slate-500';
+
+      const summary = analytics?.summary || {};
+      const performanceSummary = [
+        { label: 'Best Day', value: formatPercent(summary.best_day), description: 'The highest daily return this strategy has achieved.' },
+        { label: 'Worst Day', value: formatPercent(summary.worst_day), description: 'The lowest daily return (most negative) this strategy has experienced.' },
+        { label: 'Avg Daily Return', value: formatPercent(summary.avg_day), description: 'The average daily percentage change across all trading days.' },
+        { label: 'YTD Return', value: formatPercent(summary.ytd_return ?? analytics?.ytd_return), description: 'Year-to-date return for the strategy.' },
+      ];
+
+      const calendarData = {};
+      const calendarReturns = Array.isArray(analytics?.calendar_returns) ? analytics.calendar_returns : [];
+      calendarReturns.forEach(entry => {
+        if (!entry?.month) return;
+        const [year, month] = entry.month.split('-');
+        if (!calendarData[year]) calendarData[year] = {};
+        calendarData[year][month] = entry.return;
+      });
+      const availableCalendarYears = Object.keys(calendarData).sort();
+      const currentCalendarYear = availableCalendarYears.length > 0 ? availableCalendarYears[availableCalendarYears.length - 1] : new Date().getFullYear().toString();
+
+      const holdingsWithMetrics = holdings.map(h => {
+        const sym = h.ticker || h.symbol || h;
+        const sec = securitiesMap.get(sym) || securitiesMap.get(normalizeSymbol(sym));
+        const rawWeight = Number(h.weight) || 0;
+        const weightNorm = totalWeight > 0 ? (rawWeight / totalWeight) * 100 : rawWeight;
+        const price = sec?.last_price ? Number(sec.last_price) / 100 : 0;
+        const shares = Number(h.shares || h.quantity || 1);
+        const mv = shares * price;
+        const dailyChange = sec?.change_percent != null ? Number(sec.change_percent) : null;
+        return { symbol: sym, name: h.name || sec?.name || sym, weight: rawWeight, weightNorm, logoUrl: sec?.logo_url || null, dailyChange, shares, marketValue: mv };
+      });
+
+      const nonCashHoldings = holdingsWithMetrics.filter(h => h.symbol.toUpperCase() !== 'CASH');
+      const formattedCashAmount = cashAmount ? formatCurrency(cashAmount, strategy.base_currency || 'ZAR') : null;
+      nonCashHoldings.push({
+        symbol: 'CASH',
+        name: formattedCashAmount ? `Cash (${formattedCashAmount})` : 'Cash',
+        weight: 8,
+        weightNorm: 8,
+        logoUrl: null,
+        dailyChange: null,
+        shares: 0,
+        marketValue: cashAmount || 0
+      });
+
+      const curves = analytics?.curves || {};
+      const availableTimeframes = ['1W', '1M', '3M', '6M', 'YTD'].filter(key => Array.isArray(curves[key]) && curves[key].length > 0);
+      const hasChartData = availableTimeframes.length > 0;
+
+      let html = '';
+
+      html += `
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h1 class="text-2xl font-semibold text-slate-900">${strategy.name}</h1>
+              <p class="text-sm text-slate-500 mt-1">
+                ${strategy.risk_level || 'Balanced'} · ${strategy.sector || 'Multi-asset'} · ${strategy.base_currency || 'ZAR'}
+              </p>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <span class="px-3 py-1 text-xs font-semibold rounded-full ${riskBadgeClass(strategy.risk_level)}">${strategy.risk_level || 'Unspecified'}</span>
+              <span class="px-3 py-1 text-xs font-semibold rounded-full ${strategy.status === 'active' ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-500'}">${strategy.status || 'draft'}</span>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-2 mt-3">
+            ${(strategy.tags || []).map(tag => `<span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">${tag}</span>`).join('')}
+            ${strategy.is_public ? '<span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Public</span>' : ''}
+            ${strategy.is_featured ? '<span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">Featured</span>' : ''}
+          </div>
+
+          ${hasChartData ? `
+          <div class="mt-5 h-48 w-full flex items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50">
+            <p class="text-sm text-slate-400">Chart available on Mint platform</p>
+          </div>
+          ` : ''}
+
+          <div class="mt-4 grid grid-cols-3 gap-3">
+            <div class="bg-slate-50 rounded-xl p-3 text-center">
+              <p class="text-[11px] text-slate-500">Holdings</p>
+              <p class="text-xl font-semibold text-slate-900">${holdings.length}</p>
+            </div>
+            <div class="bg-violet-50 rounded-xl p-3 text-center">
+              <p class="text-[11px] text-violet-600">Min. Investment</p>
+              <p class="text-xl font-semibold text-violet-700">${minInvestment ? formatCurrency(minInvestment) : 'N/A'}</p>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-3 text-center">
+              <p class="text-[11px] text-slate-500">All-time Return</p>
+              <p class="text-xl font-semibold ${allTimeTextClass}">${formattedAllTimeReturn}</p>
+            </div>
+          </div>
+        </div>`;
+
+      if (nonCashHoldings.length > 0) {
+        html += `
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-semibold text-slate-900">Daily Change</h2>
+            ${analyticsTimestamp ? `<p class="text-xs text-slate-500">Updated ${new Date(analyticsTimestamp).toLocaleDateString()}</p>` : ''}
+          </div>
+          <div class="marquee-scroll mt-4 flex gap-3 pb-2">
+            ${nonCashHoldings.map(h => `
+              <div class="flex-shrink-0 w-48 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center overflow-hidden">
+                    ${h.logoUrl
+                      ? `<img src="${h.logoUrl}" alt="${h.symbol}" class="w-full h-full object-cover" />`
+                      : h.symbol === 'CASH'
+                        ? `<svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="currentColor"><path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>`
+                        : `<span class="text-[10px] font-semibold text-slate-500">${(h.symbol || '').slice(0, 2)}</span>`
+                    }
+                  </div>
+                  <div>
+                    <p class="text-xs font-semibold text-slate-900">${h.symbol}</p>
+                    <p class="text-[10px] text-slate-500 truncate max-w-[120px]">${h.name}</p>
+                  </div>
+                </div>
+                <div class="mt-3 space-y-1">
+                  ${h.dailyChange != null
+                    ? `<p class="text-sm font-semibold ${h.dailyChange >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${h.dailyChange >= 0 ? '+' : ''}${h.dailyChange.toFixed(2)}%</p>`
+                    : '<p class="text-sm font-semibold text-slate-400">Data unavailable</p>'
+                  }
+                  <p class="text-xs text-slate-600">${h.weightNorm.toFixed(2)}% weight</p>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>`;
+      }
+
+      if (!analyticsUnavailable) {
+        html += `
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-semibold text-slate-900">Performance Summary</h2>
+            ${analyticsTimestamp ? `<p class="text-xs text-slate-500">As of ${new Date(analyticsTimestamp).toLocaleDateString()}</p>` : ''}
+          </div>
+          <div class="mt-4 grid grid-cols-2 gap-3">
+            ${performanceSummary.map(m => `
+              <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <p class="text-xs font-semibold text-slate-500">${m.label}</p>
+                <p class="mt-2 text-lg font-semibold text-slate-900">${m.value}</p>
+                <p class="mt-1 text-[11px] text-slate-400">${m.description}</p>
+              </div>
+            `).join('')}
+          </div>
+        </div>`;
+      }
+
+      if (strategy.description) {
+        html += `
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+          <h2 class="text-base font-semibold text-slate-900">Strategy Description</h2>
+          <p class="mt-3 text-sm text-slate-600 leading-relaxed">${strategy.description}</p>
+        </div>`;
+      }
+
+      html += `
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+          <h2 class="text-base font-semibold text-slate-900">Portfolio Holdings</h2>
+          <p class="mt-1 text-xs text-slate-500">${nonCashHoldings.length} asset${nonCashHoldings.length !== 1 ? 's' : ''} including cash</p>
+          <div class="mt-4 space-y-3">
+            ${nonCashHoldings.length > 0 ? nonCashHoldings.map((h, i) => `
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg border border-slate-200 bg-white flex items-center justify-center overflow-hidden shadow-sm flex-shrink-0">
+                  ${h.logoUrl
+                    ? `<img src="${h.logoUrl}" alt="${h.symbol}" class="w-full h-full object-cover" />`
+                    : h.symbol === 'CASH'
+                      ? `<svg class="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="currentColor"><path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>`
+                      : `<span class="text-xs font-semibold text-slate-400">${(h.symbol || '').slice(0, 2)}</span>`
+                  }
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-slate-900">${h.symbol}</p>
+                  <p class="text-xs text-slate-500 truncate">${h.name}</p>
+                </div>
+                <div class="text-right flex-shrink-0">
+                  ${h.shares > 0 ? `<p class="text-xs text-slate-400">${h.shares} share${h.shares !== 1 ? 's' : ''}</p>` : ''}
+                  ${h.marketValue > 0 ? `<p class="text-xs text-slate-500">R ${h.marketValue.toFixed(2)}</p>` : ''}
+                </div>
+                <div class="text-right w-16 flex-shrink-0">
+                  <p class="text-sm font-semibold text-slate-900">${h.weightNorm.toFixed(2)}%</p>
+                  ${h.dailyChange != null
+                    ? `<p class="text-[11px] font-medium ${h.dailyChange >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${h.dailyChange >= 0 ? '+' : ''}${h.dailyChange.toFixed(2)}%</p>`
+                    : ''
+                  }
+                </div>
+              </div>
+            `).join('')
+            : '<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">No holdings configured</div>'
+          }
+          </div>
+        </div>`;
+
+      if (availableCalendarYears.length > 0) {
+        html += `
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+          <div class="flex items-center justify-between gap-4 mb-4">
+            <h2 class="text-base font-semibold text-slate-900">Calendar Returns</h2>
+            ${availableCalendarYears.length > 1 ? `
+              <div class="flex flex-wrap gap-2">
+                ${availableCalendarYears.map(year => `
+                  <button type="button" onclick="switchCalendarYear('${year}')"
+                    class="calendar-year-btn rounded-full px-3 py-1 text-xs font-semibold ${year === currentCalendarYear ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-600'}"
+                    data-year="${year}">
+                    ${year}
+                  </button>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+          <div id="calendarGrid">
+            ${renderCalendarGrid(calendarData, currentCalendarYear)}
+          </div>
+        </div>`;
+
+        window._calendarData = calendarData;
+      }
+
+      html += `
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+          <h2 class="text-base font-semibold text-slate-900">Fees & Disclaimers</h2>
+          <ul class="mt-3 space-y-2 text-xs text-slate-600">
+            <li>Management fee: 0% per annum</li>
+            <li>Performance fee: 20% of profits (if applicable)</li>
+            <li>Past performance does not guarantee future results</li>
+            <li>All data is for informational purposes only</li>
+          </ul>
+        </div>`;
+
+      factsheetContent.innerHTML = html;
+    };
+
+    const renderCalendarGrid = (calendarData, year) => {
+      return `
+        <p class="mb-2 text-xs font-semibold text-slate-500">${year}</p>
+        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+          ${monthNames.map((label, index) => {
+            const monthKey = String(index + 1).padStart(2, '0');
+            const value = calendarData[String(year)]?.[monthKey];
+            return `
+              <div class="rounded-2xl px-3 py-3 text-center text-xs font-semibold ${getReturnBgColor(value)}">
+                <p class="text-[11px] font-semibold text-slate-600">${label}</p>
+                <p class="mt-1 text-sm">${value == null ? '-' : `${(Number(value) * 100).toFixed(2)}%`}</p>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    };
+
+    window.switchCalendarYear = (year) => {
+      const grid = document.getElementById('calendarGrid');
+      if (grid && window._calendarData) {
+        grid.innerHTML = renderCalendarGrid(window._calendarData, year);
+      }
+      document.querySelectorAll('.calendar-year-btn').forEach(btn => {
+        if (btn.dataset.year === year) {
+          btn.className = 'calendar-year-btn rounded-full px-3 py-1 text-xs font-semibold bg-slate-900 text-white';
+        } else {
+          btn.className = 'calendar-year-btn rounded-full px-3 py-1 text-xs font-semibold border border-slate-200 bg-white text-slate-600';
+        }
+      });
+    };
+
+    const requireSession = async () => {
+      const { data } = await supabaseClient.auth.getSession();
+      if (!data.session) {
+        window.location.href = '/signin.html';
+        return false;
+      }
+      return true;
+    };
+
+    if (signOutBtn) {
+      signOutBtn.addEventListener('click', async () => {
+        await supabaseClient.auth.signOut();
+        window.location.href = '/signin.html';
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      const ok = await requireSession();
+      if (!ok) return;
+      await loadFactsheet();
+    });
+  </script>
+</body>
+</html>
