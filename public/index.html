@@ -3095,6 +3095,26 @@
                   </div>
                 </div>
               </div>
+
+              <div class="detail-card" data-computershare-actions>
+                <div class="card-header">
+                  <div class="card-title">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm1 7V3.5L18.5 9H15z"/>
+                    </svg>
+                    ComputerShare account creation doc
+                  </div>
+                </div>
+                <div class="detail-row">
+                  <div class="detail-label">Actions</div>
+                  <div class="detail-value">
+                    <div class="mandate-actions">
+                      <button class="mandate-action-btn" type="button" data-computershare-view>View</button>
+                      <button class="mandate-action-btn" type="button" data-computershare-download>Download</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="right-column">
@@ -3447,6 +3467,9 @@
       kyc: 'all',
       bank: 'all'
     };
+    const JSPDF_PRIMARY_SRC = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+    const JSPDF_FALLBACK_SRC = 'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js';
+    const COMPUTERSHARE_LOGO_URL = 'https://mfxnghmuccevsxwcetej.supabase.co/storage/v1/object/public/Mint%20Assets/tMOmeIOo4KE20Yh1bIuk8PFMlFHZ421rVESa2dcn.jpg';
     let allProfiles = [];
     let allKycMap = {};
     const onboardingMap = {};
@@ -3459,6 +3482,46 @@
     let completedTableEntries = [];
     let notCompletedEmailOpen = false;
     let notCompletedEmailEntries = [];
+
+    const getJsPdfConstructor = () => window.jspdf?.jsPDF || window.jsPDF || null;
+
+    const loadScriptOnce = (src, id) => new Promise((resolve, reject) => {
+      const existing = document.getElementById(id);
+      if (existing) {
+        if (existing.dataset.loaded === 'true') {
+          resolve();
+          return;
+        }
+        existing.addEventListener('load', () => resolve(), { once: true });
+        existing.addEventListener('error', () => reject(new Error(`Script failed to load: ${src}`)), { once: true });
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.id = id;
+      script.src = src;
+      script.async = true;
+      script.addEventListener('load', () => {
+        script.dataset.loaded = 'true';
+        resolve();
+      }, { once: true });
+      script.addEventListener('error', () => reject(new Error(`Script failed to load: ${src}`)), { once: true });
+      document.head.appendChild(script);
+    });
+
+    const ensureJsPdfLoaded = async () => {
+      const existing = getJsPdfConstructor();
+      if (existing) return existing;
+
+      try {
+        await loadScriptOnce(JSPDF_PRIMARY_SRC, 'jspdf-primary');
+      } catch (primaryError) {
+        console.warn('Primary jsPDF source failed, trying fallback.', primaryError);
+        await loadScriptOnce(JSPDF_FALLBACK_SRC, 'jspdf-fallback');
+      }
+
+      return getJsPdfConstructor();
+    };
     let isAutoSyncingVerifiedPacks = false;
 
     const getInitials = (name = '') => {
@@ -4704,9 +4767,10 @@
       nextBtn.disabled = safePage >= totalPages - 1;
     };
 
-    const buildPackPdfReport = (pack, sections = []) => {
-      const JsPdf = window.jspdf?.jsPDF;
-      if (!JsPdf || !pack) return null;
+    const buildPackPdfReport = (pack, sections = [], JsPdfCtor = getJsPdfConstructor()) => {
+      if (!JsPdfCtor || !pack) return null;
+
+      const JsPdf = JsPdfCtor;
 
       const doc = new JsPdf({ unit: 'pt', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -4847,9 +4911,11 @@
       };
     };
 
-    const downloadPackPdf = (pack, sections = []) => {
-      const report = buildPackPdfReport(pack, sections);
-      if (!report) return;
+    const downloadPackPdf = async (pack, sections = []) => {
+      const JsPdfCtor = await ensureJsPdfLoaded();
+      if (!JsPdfCtor) throw new Error('PDF library unavailable. Please refresh and try again.');
+      const report = buildPackPdfReport(pack, sections, JsPdfCtor);
+      if (!report) throw new Error('Could not build account details PDF for this user.');
       report.doc.save(report.filename);
     };
 
@@ -6294,6 +6360,290 @@
       return { doc, filename: `mandate-${safeBase}.pdf` };
     };
 
+    const getComputerSharePrefillData = (profile = {}, onboardingRow = {}, packDetails = {}) => {
+      const parsedPack = parseJsonSafe(packDetails) || (typeof packDetails === 'object' ? packDetails : {});
+      const parsedSumsubRaw = parseJsonSafe(onboardingRow?.sumsub_raw) || {};
+
+      const firstName = String(profile?.first_name || pickPackValue(parsedPack, ['info.firstName', 'fixedInfo.firstName', 'firstName']) || '').trim();
+      const lastName = String(profile?.last_name || pickPackValue(parsedPack, ['info.lastName', 'fixedInfo.lastName', 'lastName']) || '').trim();
+      const fullName = [firstName, lastName].filter(Boolean).join(' ') || String(pickPackValue(parsedPack, ['fullName', 'info.fullName', 'fixedInfo.fullName']) || '').trim() || 'N/A';
+
+      const valueFrom = (candidates = [], fallback = 'N/A') => {
+        const found = candidates.find((value) => value !== null && value !== undefined && String(value).trim() !== '');
+        return found === undefined ? fallback : String(found).trim();
+      };
+
+      const composeAddress = (parts = []) => {
+        const unique = [];
+        const seen = new Set();
+        parts.forEach((part) => {
+          const value = String(part || '').trim();
+          if (!value || value.toLowerCase() === 'n/a') return;
+          const key = value.toLowerCase();
+          if (seen.has(key)) return;
+          seen.add(key);
+          unique.push(value);
+        });
+        return unique.join('\n');
+      };
+
+      const identityNumber = valueFrom([
+        profile?.identity_number,
+        profile?.id_number,
+        onboardingRow?.id_number,
+        onboardingRow?.identity_number,
+        pickPackValue(parsedPack, ['info.idNumber', 'info.identityNumber', 'fixedInfo.idNumber', 'fixedInfo.identityNumber', 'idNumber']),
+        parsedSumsubRaw?.mandate_data?.id_number
+      ]);
+
+      const packPhysicalAddress = pickPackValue(parsedPack, [
+        'info.addresses.0.streetEn',
+        'info.addresses.0.street',
+        'info.idDocs.1.address.streetEn',
+        'info.idDocs.1.address.street',
+        'fixedInfo.address',
+        'fixedInfo.residentialAddress',
+        'info.address',
+        'info.residentialAddress',
+        'address.formattedAddress',
+        'address.fullAddress',
+        'address.street',
+        'address.line1',
+        'addresses.residential.formatted',
+        'addresses.residential.fullAddress',
+        'addresses.residential.addressLine',
+        'addresses.residential.street',
+        'addresses.0.streetEn',
+        'addresses.0.street',
+        'addresses.0.fullAddress',
+        'addresses.0.formattedAddress',
+        'addresses.0.addressLine'
+      ]);
+
+      const onboardingPhysicalAddress = valueFrom([
+        onboardingRow?.physical_address,
+        onboardingRow?.residential_address,
+        onboardingRow?.address,
+        onboardingRow?.street_address,
+        onboardingRow?.address_line_1,
+        onboardingRow?.address_line1,
+        onboardingRow?.line1
+      ], '');
+
+      const profilePhysicalAddress = valueFrom([
+        profile?.address,
+        profile?.street_address,
+        profile?.address_line_1,
+        profile?.address_line1,
+        profile?.line1
+      ], '');
+
+      const physicalAddress = valueFrom([
+        packPhysicalAddress,
+        onboardingPhysicalAddress,
+        profilePhysicalAddress,
+        composeAddress([
+          onboardingRow?.address_line_2,
+          onboardingRow?.suburb,
+          onboardingRow?.city,
+          onboardingRow?.province,
+          onboardingRow?.postal_code,
+          onboardingRow?.country,
+          profile?.suburb,
+          profile?.city,
+          profile?.province,
+          profile?.postal_code,
+          profile?.country
+        ])
+      ]);
+
+      const packPostalAddress = pickPackValue(parsedPack, [
+        'info.addresses.0.formattedAddress',
+        'info.idDocs.1.address.formattedAddress',
+        'info.addresses.0.fullAddress',
+        'fixedInfo.postalAddress',
+        'fixedInfo.address',
+        'info.postalAddress',
+        'info.address',
+        'addresses.postal.formatted',
+        'addresses.postal.formattedAddress',
+        'addresses.postal.fullAddress',
+        'addresses.postal.addressLine',
+        'addresses.postal.street',
+        'addresses.0.formattedAddress',
+        'addresses.0.fullAddress',
+        'addresses.0.addressLine',
+        'address.postalAddress',
+        'address.formattedAddress'
+      ]);
+
+      const onboardingPostalAddress = valueFrom([
+        onboardingRow?.postal_address,
+        onboardingRow?.postalAddress,
+        onboardingRow?.postal_line_1,
+        onboardingRow?.postal_line1
+      ], '');
+
+      const profilePostalAddress = valueFrom([
+        profile?.postal_address,
+        profile?.postalAddress,
+        profile?.postal_line_1,
+        profile?.postal_line1
+      ], '');
+
+      const postalAddress = valueFrom([
+        packPostalAddress,
+        onboardingPostalAddress,
+        profilePostalAddress,
+        composeAddress([
+          onboardingRow?.postal_line_2,
+          onboardingRow?.postal_suburb,
+          onboardingRow?.postal_city,
+          onboardingRow?.postal_province,
+          onboardingRow?.postal_code,
+          onboardingRow?.postal_country,
+          profile?.postal_suburb,
+          profile?.postal_city,
+          profile?.postal_province,
+          profile?.postal_code,
+          profile?.postal_country
+        ])
+      ], physicalAddress);
+
+      return {
+        assetFundManager: valueFrom([
+          onboardingRow?.asset_fund_manager,
+          onboardingRow?.company_name,
+          'MINT PLATFORMS (pty) Ltd'
+        ]),
+        accountName: fullName,
+        contactName: fullName,
+        identityNumber,
+        incomeTaxNumber: valueFrom([
+          parsedSumsubRaw?.tax_details?.tax_number,
+          parsedSumsubRaw?.tax_number,
+          onboardingRow?.tax_number,
+          onboardingRow?.income_tax_number,
+          profile?.tax_number,
+          pickPackValue(parsedPack, ['info.taxId', 'fixedInfo.taxId'])
+        ]),
+        physicalAddress,
+        postalAddress,
+        telNo: valueFrom([onboardingRow?.tel_no, profile?.tel_no, 'N/A']),
+        faxNo: valueFrom([onboardingRow?.fax_no, profile?.fax_no, 'N/A']),
+        cellNo: valueFrom([profile?.phone_number, onboardingRow?.phone_number, pickPackValue(parsedPack, ['phone', 'phoneNumber', 'info.phone'])]),
+        email: valueFrom([profile?.email, onboardingRow?.email, pickPackValue(parsedPack, ['email', 'info.email'])]),
+        bankAccountNumber: valueFrom([onboardingRow?.bank_account_number, profile?.bank_account_number, profile?.bank_account]),
+        branchNumber: valueFrom([onboardingRow?.bank_branch_code, onboardingRow?.branch_code, profile?.branch_number]),
+        bankName: valueFrom([onboardingRow?.bank_name, profile?.bank_name]),
+        bankAccountName: valueFrom([onboardingRow?.bank_account_name, profile?.bank_account_name, onboardingRow?.bank_account_type, profile?.bank_account_type]),
+        accountType: valueFrom([onboardingRow?.bank_account_type, profile?.bank_account_type]),
+        safeBase: sanitizeFilename([firstName, lastName].filter(Boolean).join('_') || profile?.id || 'client') || 'client'
+      };
+    };
+
+    const loadImageAsDataUrl = async (url) => {
+      const imageUrl = String(url || '').trim();
+      if (!imageUrl) return '';
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error(`Logo request failed: ${response.status}`);
+      }
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('Could not read logo data.'));
+        reader.readAsDataURL(blob);
+      });
+    };
+
+    const buildComputerSharePdfReport = (profile = {}, onboardingRow = {}, packDetails = {}, options = {}) => {
+      const JsPdfCtor = options?.JsPdfCtor || getJsPdfConstructor();
+      if (!JsPdfCtor) return null;
+      const doc = new JsPdfCtor({ unit: 'pt', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 38;
+      const contentWidth = pageWidth - (margin * 2);
+      const leftColWidth = Math.round(contentWidth * 0.34);
+      const rightColWidth = contentWidth - leftColWidth;
+      let y = margin + 12;
+      const logoDataUrl = String(options?.logoDataUrl || '').trim();
+
+      const d = getComputerSharePrefillData(profile, onboardingRow, packDetails);
+      const rows = [
+        ['ASSET / FUND MANAGER', d.assetFundManager],
+        ['ACCOUNT NAME', d.accountName],
+        ['CONTACT NAME', d.contactName],
+        ['IDENTITY / REGISTRATION NUMBER', d.identityNumber],
+        ['INCOME TAX NUMBER', d.incomeTaxNumber],
+        ['PHYSICAL ADDRESS', d.physicalAddress],
+        ['POSTAL ADDRESS', d.postalAddress],
+        ['TEL NO (O/H)', d.telNo],
+        ['FAX NO', d.faxNo],
+        ['CELL NO', d.cellNo],
+        ['E-MAIL', d.email],
+        ['BANK ACCOUNT NUMBER', d.bankAccountNumber],
+        ['BRANCH NUMBER', d.branchNumber],
+        ['BANK NAME', d.bankName],
+        ['ACCOUNT NAME', d.bankAccountName],
+        ['ACCOUNT TYPE', d.accountType]
+      ];
+
+      if (logoDataUrl) {
+        try {
+          const logoWidth = 170;
+          const logoHeight = 44;
+          doc.addImage(logoDataUrl, 'JPEG', pageWidth - margin - logoWidth, y, logoWidth, logoHeight);
+        } catch (logoError) {
+          console.warn('Could not add ComputerShare logo to PDF:', logoError);
+        }
+      }
+
+      y += 58;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.text('ACCOUNT DETAILS', pageWidth / 2, y + 10, { align: 'center' });
+      y += 32;
+
+      const drawRow = (label, value) => {
+        const valueText = String(value || 'N/A');
+        const valueLines = doc.splitTextToSize(valueText, rightColWidth - 16);
+        const labelLines = doc.splitTextToSize(label, leftColWidth - 16);
+        const isAddress = label.includes('ADDRESS');
+        const minHeight = isAddress ? 88 : 30;
+        const rowHeight = Math.max(minHeight, (Math.max(labelLines.length, valueLines.length) * 13) + 12);
+
+        if (y + rowHeight > pageHeight - margin) {
+          doc.addPage();
+          y = margin;
+        }
+
+        doc.setDrawColor(17, 17, 17);
+        doc.setLineWidth(1);
+        doc.rect(margin, y, leftColWidth, rowHeight);
+        doc.rect(margin + leftColWidth, y, rightColWidth, rowHeight);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text(labelLines, margin + 8, y + 16);
+
+        doc.setFontSize(11);
+        doc.text(valueLines, margin + leftColWidth + 8, y + 16);
+
+        y += rowHeight;
+      };
+
+      rows.forEach(([label, value]) => drawRow(label, value));
+
+      return {
+        doc,
+        filename: `computershare-account-creation-${d.safeBase}.pdf`
+      };
+    };
+
+
     const openPdfBlobInNewTab = (blob) => {
       if (!blob) return false;
       const url = URL.createObjectURL(blob);
@@ -6388,7 +6738,7 @@
       const zip = new JsZip();
       zip.file(`sumsub-${safeBase}.json`, JSON.stringify(applicant, null, 2));
       const pdfSections = buildCompletePackSections(applicant);
-      const pdfReport = buildPackPdfReport(applicant, pdfSections);
+      const pdfReport = buildPackPdfReport(applicant, pdfSections, getJsPdfConstructor());
       if (pdfReport) {
         zip.file(pdfReport.filename, pdfReport.doc.output('blob'));
       }
@@ -6563,7 +6913,19 @@
         const pack = container?.__activePackDetails;
         const sections = container?.__packSections || [];
         if (!pack) return;
-        downloadPackPdf(pack, sections);
+
+        const originalLabel = packDownloadBtn.textContent;
+        packDownloadBtn.disabled = true;
+        packDownloadBtn.textContent = 'Preparing PDF...';
+        downloadPackPdf(pack, sections)
+          .catch((error) => {
+            console.error('Pack PDF generation failed:', error);
+            alert(error?.message || 'Unable to generate account details PDF right now. Please try again.');
+          })
+          .finally(() => {
+            packDownloadBtn.disabled = false;
+            packDownloadBtn.textContent = originalLabel;
+          });
         return;
       }
 
@@ -6843,6 +7205,51 @@
         } finally {
           mandateActionBtn.disabled = false;
           mandateActionBtn.textContent = originalLabel;
+        }
+      }
+
+      const computerShareViewBtn = event.target.closest('[data-computershare-view]');
+      const computerShareDownloadBtn = event.target.closest('[data-computershare-download]');
+      const computerShareActionBtn = computerShareViewBtn || computerShareDownloadBtn;
+      if (computerShareActionBtn) {
+        const item = computerShareActionBtn.closest('.simple-item');
+        const profileId = item?.dataset?.profileId;
+        if (!item || !profileId) return;
+
+        const profile = allProfiles.find((row) => String(row.id) === String(profileId));
+        if (!profile) return;
+
+        const onboardingRow = onboardingMap[profileId] || {};
+        const packDetails = packJsonMap[profileId] || packDetailsRowMap[profileId]?.pack_details || {};
+        const originalLabel = computerShareActionBtn.textContent;
+        computerShareActionBtn.disabled = true;
+        computerShareActionBtn.textContent = 'Preparing PDF...';
+
+        try {
+          const JsPdfCtor = await ensureJsPdfLoaded();
+          if (!JsPdfCtor) throw new Error('PDF library unavailable. Please refresh and try again.');
+          let logoDataUrl = '';
+          try {
+            logoDataUrl = await loadImageAsDataUrl(COMPUTERSHARE_LOGO_URL);
+          } catch (logoError) {
+            console.warn('ComputerShare logo load failed, continuing without logo:', logoError);
+          }
+          const report = buildComputerSharePdfReport(profile, onboardingRow, packDetails, { JsPdfCtor, logoDataUrl });
+          if (!report) throw new Error('Could not build ComputerShare account creation PDF.');
+
+          if (computerShareViewBtn) {
+            const blob = report.doc.output('blob');
+            const opened = openPdfBlobInNewTab(blob);
+            if (!opened) report.doc.save(report.filename);
+          } else {
+            report.doc.save(report.filename);
+          }
+        } catch (error) {
+          console.error('ComputerShare PDF generation failed:', error);
+          alert(error?.message || 'Unable to generate ComputerShare account creation PDF right now.');
+        } finally {
+          computerShareActionBtn.disabled = false;
+          computerShareActionBtn.textContent = originalLabel;
         }
       }
 
