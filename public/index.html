@@ -5729,13 +5729,14 @@
 
       const tempContainer = document.createElement('div');
       tempContainer.style.position = 'fixed';
-      tempContainer.style.left = '0';
+      tempContainer.style.left = '-10000px';
       tempContainer.style.top = '0';
-      tempContainer.style.width = '1px';
-      tempContainer.style.height = '1px';
-      tempContainer.style.opacity = '0';
+      tempContainer.style.width = '880px';
+      tempContainer.style.height = 'auto';
+      tempContainer.style.opacity = '1';
       tempContainer.style.pointerEvents = 'none';
-      tempContainer.style.overflow = 'hidden';
+      tempContainer.style.background = '#ffffff';
+      tempContainer.style.zIndex = '-1';
       tempContainer.innerHTML = `
         <style>
           .mint-account-pdf-preview{width:800px;background:white;padding:40px;font-family:Arial,sans-serif;box-shadow:0 0 15px rgba(0,0,0,0.08);}
@@ -5779,6 +5780,16 @@
       setPreviewText('#p_country', details.country);
 
       const pdfElement = tempContainer.querySelector('#pdf');
+      const logoImg = tempContainer.querySelector('.mint-account-pdf-logo');
+      if (logoImg && !logoImg.complete) {
+        await new Promise((resolve) => {
+          logoImg.onload = () => resolve();
+          logoImg.onerror = () => resolve();
+          setTimeout(resolve, 1200);
+        });
+      }
+      await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+
       try {
         await window.html2pdf().set({
           margin: 10,
